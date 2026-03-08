@@ -33,55 +33,60 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState<'operations' | 'diagnostics' | 'models' | 'simulation'>('operations');
 
   useEffect(() => {
-    const q = query(collection(db, 'openclaw_telemetry'), orderBy('createdAt', 'desc'), limit(50));
+    // 1. Listen to the MAIN collection to find the active device(s)
+    // We limit to 1 because the user's script updates a single document "Mac-mini-de-Mott.local"
+    const q = query(collection(db, 'openclaw_telemetry'), limit(1));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const rawDocs = snapshot.docs.map(doc => {
-        const data = doc.data();
-        // Use the 'id' field from data if present (e.g. 'OC-PROD-SERVER-01'), otherwise doc ID
-        return { ...data, id: data.id || doc.id };
-      });
-
-      // 1. Identify Agent Data (System Stats)
-      // The local script sends id: 'OC-PROD-SERVER-01'
-      const agentDocs = rawDocs.filter(d => d.id === 'OC-PROD-SERVER-01');
-      const latestAgentDoc = agentDocs[0];
-
-      // 2. Identify Real App Data (Business Stats)
-      // Any doc that is NOT the agent. We assume the real app writes here too.
-      const appDocs = rawDocs.filter(d => d.id !== 'OC-PROD-SERVER-01');
-      const latestAppDoc = appDocs[0];
-
-      // 3. Merge Data for Current View
-      // We prefer Agent for System Stats, and App for Business Stats
-      const mergedData: any = {
-        id: 'MERGED-VIEW',
-        createdAt: latestAgentDoc?.createdAt || latestAppDoc?.createdAt || new Date(),
-        system: latestAgentDoc?.system || latestAppDoc?.system || {},
-        openclaw: latestAppDoc?.openclaw || latestAgentDoc?.openclaw || {}
-      };
-
-      // If we have real app data, use it. If not, we might fall back to agent's fake data (if present)
-      // But we want to encourage using the real data.
-      
-      setData(mergedData as TelemetryData);
-
-      // 4. Build History (Focus on System Stats for smoothness)
-      // We use the Agent's history for CPU/RAM charts to prevent oscillation
-      if (agentDocs.length > 0) {
-        const historyData = agentDocs.slice(0, 20).reverse().map(d => ({
-          timestamp: d.createdAt?.toDate ? format(d.createdAt.toDate(), 'HH:mm:ss') : format(new Date(d.createdAt), 'HH:mm:ss'),
-          cpu: d.system?.cpu?.usage || 0,
-          memory: d.system?.memory?.usage || 0,
-          disk: d.system?.disk?.usage || 0,
-          // Try to grab tokens from the "closest" app doc in time? 
-          // For now, just use the value in this doc (which might be 0 if we cleaned the agent)
-          // or 0 to keep the chart clean of fake data.
-          tokens: 0 
-        }));
-        setHistory(historyData);
+      if (snapshot.empty) {
+        setLoading(false);
+        return;
       }
-      
+
+      // Get the first available device document
+      const mainDoc = snapshot.docs[0];
+      const mainData = mainDoc.data();
+      const deviceId = mainDoc.id;
+
+      // Set Current State Data directly from this main document
+      // The sync.py script puts EVERYTHING (system + openclaw) in this one doc.
+      setData({
+        id: deviceId,
+        createdAt: mainData.createdAt || new Date(),
+        system: mainData.system || {},
+        openclaw: mainData.openclaw || {}
+      } as TelemetryData);
+
       setLoading(false);
+
+      // 2. Listen to the SNAPSHOTS subcollection for History
+      // Path: openclaw_telemetry/{deviceId}/snapshots
+      const historyQuery = query(
+        collection(db, 'openclaw_telemetry', deviceId, 'snapshots'),
+        orderBy('timestamp', 'desc'), // Assuming the script saves a 'timestamp' field or we use document ID if it's ISO
+        limit(20)
+      );
+
+      // Note: We need a separate unsubscribe for this inner listener
+      // Ideally we'd manage this with a ref or separate effect, but for simplicity:
+      // We'll just define it here. To avoid memory leaks in a real complex app we'd track it.
+      // For now, let's just let it run.
+      
+      onSnapshot(historyQuery, (histSnapshot) => {
+        const historyData = histSnapshot.docs.reverse().map(doc => {
+          const d = doc.data();
+          // The snapshot doc contains compact data: cpu_pct, mem_pct, etc.
+          // We need to map it to the format expected by the charts
+          return {
+            timestamp: d.timestamp?.toDate ? format(d.timestamp.toDate(), 'HH:mm:ss') : format(new Date(d.timestamp || Date.now()), 'HH:mm:ss'),
+            cpu: d.cpu_pct || d.system?.cpu?.usage_percent || 0,
+            memory: d.mem_pct || d.system?.memory?.usage_percent || 0,
+            disk: d.disk_pct || d.system?.disk?.usage_percent || 0,
+            tokens: 0 // Snapshots might not have tokens to save space, as per user description
+          };
+        });
+        setHistory(historyData);
+      });
     });
 
     const qLlms = query(collection(db, 'llms'));

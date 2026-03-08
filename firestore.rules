@@ -149,6 +149,12 @@ service cloud.firestore {
     match /openclaw_telemetry/{docId} {
       allow read: if true;
       allow write: if false;
+      
+      // Permitir leitura dos snapshots históricos
+      match /snapshots/{snapshotId} {
+        allow read: if true;
+        allow write: if false;
+      }
     }
   }
 }
