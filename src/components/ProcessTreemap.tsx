@@ -1,6 +1,4 @@
 import React from 'react';
-import { Treemap, Tooltip, ResponsiveContainer } from 'recharts';
-import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { OpenClawProcess } from '../types';
 
@@ -9,132 +7,100 @@ interface ProcessTreemapProps {
   className?: string;
 }
 
+function cpuColor(cpu: number): { fill: string; text: string } {
+  if (cpu > 60) return { fill: '#ef4444', text: '#fff' };
+  if (cpu > 30) return { fill: '#f59e0b', text: '#fff' };
+  if (cpu > 10) return { fill: '#3b82f6', text: '#fff' };
+  if (cpu > 2)  return { fill: '#1d4ed8', text: '#93c5fd' };
+  return        { fill: '#181b26', text: '#6b7280' };
+}
+
+interface Block { name: string; cpu: number; mem: number; pid: number; x: number; y: number; w: number; h: number; }
+
+function simpleLayout(items: { name: string; cpu: number; mem: number; pid: number }[], W: number, H: number): Block[] {
+  if (!items.length) return [];
+  const total = items.reduce((s, i) => s + Math.max(i.mem, 1), 0);
+  const blocks: Block[] = [];
+  let y = 0;
+  let rowItems: typeof items = [];
+  let rowTotal = 0;
+
+  const flush = () => {
+    if (!rowItems.length) return;
+    const rH = (rowTotal / total) * H;
+    let rx = 0;
+    rowItems.forEach(item => {
+      const w = (Math.max(item.mem, 1) / rowTotal) * W;
+      blocks.push({ ...item, x: rx, y, w, h: rH });
+      rx += w;
+    });
+    y += rH;
+    rowItems = []; rowTotal = 0;
+  };
+
+  items.forEach((item, i) => {
+    rowItems.push(item);
+    rowTotal += Math.max(item.mem, 1);
+    const projected = (rowTotal / total) * H;
+    if (projected > H * 0.28 || i === items.length - 1) flush();
+  });
+
+  return blocks;
+}
+
 export function ProcessTreemap({ processes, className }: ProcessTreemapProps) {
   if (!processes || processes.length === 0) return null;
 
-  // Transform processes for Treemap
-  const data = processes.map(p => ({
-    name: p.name,
-    size: p.mem_mb, // Size = Memory
-    cpu: p.cpu_pct, // Color = CPU
-    pid: p.pid
+  const sorted = [...processes]
+    .filter(p => (p.mem_mb || 0) > 0)
+    .sort((a, b) => (b.mem_mb || 0) - (a.mem_mb || 0))
+    .slice(0, 12);
+
+  if (!sorted.length) return null;
+
+  const W = 400, H = 220;
+  const items = sorted.map(p => ({
+    name: p.name, cpu: p.cpu_pct || (p as any).cpu || 0,
+    mem: p.mem_mb || 0, pid: p.pid,
   }));
-
-  // Custom content for Treemap cells
-  const renderCustomizedContent = (props: any) => {
-    const { root, depth, x, y, width, height, index, payload, colors, rank, name, value } = props;
-
-    return (
-      <g>
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          style={{
-            fill: depth < 2 ? colors[Math.floor((index / root.children.length) * 6)] : 'none',
-            stroke: '#fff',
-            strokeWidth: 2 / (depth + 1e-10),
-            strokeOpacity: 1 / (depth + 1e-10),
-          }}
-        />
-        {depth === 1 ? (
-          <text
-            x={x + width / 2}
-            y={y + height / 2 + 7}
-            textAnchor="middle"
-            fill="#fff"
-            fontSize={14}
-          >
-            {name}
-          </text>
-        ) : null}
-        {depth === 1 ? (
-          <text
-            x={x + 4}
-            y={y + 18}
-            fill="#fff"
-            fontSize={16}
-            fillOpacity={0.9}
-          >
-            {index + 1}
-          </text>
-        ) : null}
-      </g>
-    );
-  };
+  const blocks = simpleLayout(items, W, H);
 
   return (
-    <div className={twMerge("bg-[#151619] border border-[#2A2B30] rounded-lg p-4 shadow-sm", className)}>
-      <h3 className="text-[#8E9299] text-xs font-mono uppercase tracking-wider mb-4">Process Resource Treemap</h3>
-      <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <Treemap
-            width={400}
-            height={200}
-            data={data}
-            dataKey="size"
-            stroke="#fff"
-            fill="#8884d8"
-            content={<CustomContent />}
-          >
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#1A1B1F', border: '1px solid #2A2B30', borderRadius: '4px' }}
-              itemStyle={{ fontSize: '12px', fontFamily: 'monospace' }}
-              labelStyle={{ color: '#8E9299', marginBottom: '4px' }}
-            />
-          </Treemap>
-        </ResponsiveContainer>
+    <div className={twMerge('bg-[#0E0F11] border border-[#1E2030] rounded-xl p-4', className)}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[#8E9299] text-[10px] font-mono uppercase tracking-widest">Processos — área = RAM, cor = CPU</h3>
+        <div className="flex items-center gap-2">
+          {[['#181b26','idle'],['#1d4ed8','>2%'],['#3b82f6','>10%'],['#f59e0b','>30%'],['#ef4444','>60%']].map(([c, l]) => (
+            <span key={l} className="flex items-center gap-1 text-[9px] font-mono text-[#8E9299]">
+              <span className="w-2 h-2 rounded-sm border border-[#2A2B30]" style={{ backgroundColor: c }} />{l}
+            </span>
+          ))}
+        </div>
       </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-lg overflow-hidden" style={{ height: 200 }}>
+        {blocks.map((b, i) => {
+          const { fill, text } = cpuColor(b.cpu);
+          const wide = b.w > 38, tall = b.h > 38;
+          return (
+            <g key={i}>
+              <rect x={b.x+1} y={b.y+1} width={Math.max(b.w-2,0)} height={Math.max(b.h-2,0)} rx={3} fill={fill} opacity={0.92} />
+              {wide && b.h > 22 && (
+                <text x={b.x+b.w/2} y={b.y+b.h/2-(tall?8:0)} textAnchor="middle" dominantBaseline="middle"
+                  fill={text} fontSize={Math.min(11, b.w/6)} fontFamily="monospace" fontWeight="bold">
+                  {b.name.length > 10 ? b.name.slice(0,9)+'…' : b.name}
+                </text>
+              )}
+              {wide && tall && (
+                <text x={b.x+b.w/2} y={b.y+b.h/2+9} textAnchor="middle" dominantBaseline="middle"
+                  fill={text} fontSize={9} fontFamily="monospace" opacity={0.7}>
+                  {b.cpu.toFixed(1)}% · {b.mem > 1024 ? `${(b.mem/1024).toFixed(1)}G` : `${b.mem.toFixed(0)}M`}
+                </text>
+              )}
+              <title>{b.name} · PID {b.pid} · {b.cpu.toFixed(1)}% CPU · {b.mem.toFixed(0)} MB RAM</title>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }
-
-const CustomContent = (props: any) => {
-  const { x, y, width, height, name, cpu, size } = props;
-  
-  // Color scale based on CPU usage
-  const color = cpu > 50 ? '#EF4444' : cpu > 20 ? '#F59E0B' : '#3B82F6';
-  
-  return (
-    <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        style={{
-          fill: color,
-          stroke: '#151619',
-          strokeWidth: 2,
-        }}
-      />
-      {width > 50 && height > 30 && (
-        <>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 - 5}
-            textAnchor="middle"
-            fill="#fff"
-            fontSize={12}
-            fontWeight="bold"
-            fontFamily="monospace"
-          >
-            {name}
-          </text>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 + 10}
-            textAnchor="middle"
-            fill="#fff"
-            fontSize={10}
-            fontFamily="monospace"
-            opacity={0.8}
-          >
-            {cpu}% CPU
-          </text>
-        </>
-      )}
-    </g>
-  );
-};

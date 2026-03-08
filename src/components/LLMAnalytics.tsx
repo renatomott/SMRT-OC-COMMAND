@@ -1,5 +1,5 @@
 import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { TokenUsage, LLMData } from '../types';
@@ -68,35 +68,44 @@ export function LLMAnalytics({ usage, models, className }: LLMAnalyticsProps) {
         {/* Distribution Chart */}
         <div className="bg-[#151619] border border-[#2A2B30] rounded-lg p-4 shadow-sm lg:col-span-1">
           <h3 className="text-[#8E9299] text-xs font-mono uppercase tracking-wider mb-4">Token Distribution</h3>
-          <div className="h-64 w-full">
+          {/* Donut chart — full width, legend below */}
+          <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                 <Pie
                   data={data}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  paddingAngle={5}
+                  innerRadius={52}
+                  outerRadius={72}
+                  paddingAngle={3}
                   dataKey="value"
+                  startAngle={90}
+                  endAngle={-270}
                 >
                   {data.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1B1F', border: '1px solid #2A2B30', borderRadius: '4px' }}
-                  itemStyle={{ color: '#fff', fontSize: '12px', fontFamily: 'monospace' }}
-                />
-                <Legend 
-                  layout="vertical" 
-                  verticalAlign="middle" 
-                  align="right"
-                  wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace', color: '#8E9299' }}
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0E0F11', border: '1px solid #2A2B30', borderRadius: '6px', fontSize: 11, fontFamily: 'monospace' }}
+                  itemStyle={{ color: '#fff' }}
+                  formatter={(value: number, name: string) => [value.toLocaleString('pt-BR'), name]}
                 />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+          {/* Custom legend — grid to avoid overflow */}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 max-h-28 overflow-y-auto pr-1">
+            {data.map((entry, i) => {
+              const shortName = entry.name.replace('openrouter/', '').replace('meta-llama/', 'llama/');
+              return (
+                <div key={i} className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                  <span className="text-[9px] font-mono text-[#8E9299] truncate" title={entry.name}>{shortName}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 

@@ -80,13 +80,13 @@ export function IntegrationList({ data, className }: IntegrationListProps) {
           <table className="w-full text-left font-mono text-xs">
             <thead>
               <tr className="border-b border-[#2A2B30] text-[#8E9299]">
-                <th className="pb-2 font-normal">NOME</th>
-                <th className="pb-2 font-normal">SCHEDULE</th>
-                <th className="pb-2 font-normal text-center">STATUS</th>
-                <th className="pb-2 font-normal text-right">ÚLTIMO RUN</th>
-                <th className="pb-2 font-normal text-right">PRÓXIMO</th>
-                <th className="pb-2 font-normal text-right">DURAÇÃO</th>
-                <th className="pb-2 font-normal text-center">ERROS</th>
+                <th className="pb-2.5 pr-4 font-medium text-left">NOME</th>
+                <th className="pb-2.5 pr-4 font-medium text-left">SCHEDULE</th>
+                <th className="pb-2.5 px-3 font-medium text-center">STATUS</th>
+                <th className="pb-2.5 px-3 font-medium text-right">ÚLTIMO RUN</th>
+                <th className="pb-2.5 px-3 font-medium text-right">PRÓXIMO</th>
+                <th className="pb-2.5 px-3 font-medium text-right">DURAÇÃO</th>
+                <th className="pb-2.5 pl-3 font-medium text-center">ERROS</th>
               </tr>
             </thead>
             <tbody className="text-white">
@@ -111,16 +111,16 @@ export function IntegrationList({ data, className }: IntegrationListProps) {
                           {status || '—'}
                         </span>
                       </td>
-                      <td className="py-2.5 text-right text-[#8E9299]">
+                      <td className="py-2.5 px-3 text-right text-[#8E9299] whitespace-nowrap">
                         {job.last_run_at ? new Date(job.last_run_at).toLocaleString('pt-BR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : job.last_run || '—'}
                       </td>
-                      <td className="py-2.5 text-right text-[#8E9299]">
+                      <td className="py-2.5 px-3 text-right text-[#8E9299] whitespace-nowrap">
                         {job.next_run_at ? new Date(job.next_run_at).toLocaleString('pt-BR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
                       </td>
-                      <td className="py-2.5 text-right text-[#8E9299]">
+                      <td className="py-2.5 px-3 text-right text-[#8E9299] whitespace-nowrap">
                         {job.last_duration_s != null ? `${job.last_duration_s.toFixed(1)}s` : '—'}
                       </td>
-                      <td className="py-2.5 text-center">
+                      <td className="py-2.5 pl-3 text-center">
                         <span className={clsx('font-bold text-xs', {
                           'text-green-400': (job.consecutive_errors || 0) === 0,
                           'text-yellow-400': (job.consecutive_errors || 0) === 1,
