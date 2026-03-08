@@ -201,6 +201,7 @@ export function Dashboard() {
         // Médias dos últimos snapshots
         const cpuVals = history.map((h: any) => h.cpu_pct).filter((v: any) => v != null);
         const memVals = history.map((h: any) => h.mem_pct).filter((v: any) => v != null);
+        const snapshotCount = history.length;
         const cpuAvg = cpuVals.length ? cpuVals.reduce((a: number, b: number) => a + b, 0) / cpuVals.length : undefined;
         const memAvg = memVals.length ? memVals.reduce((a: number, b: number) => a + b, 0) / memVals.length : undefined;
         // Providers ativos vs total
@@ -223,6 +224,7 @@ export function Dashboard() {
             totalProviders={totalProviders}
             networkSentMb={data?.system?.network?.bytes_sent_mb}
             networkRecvMb={data?.system?.network?.bytes_recv_mb}
+            snapshotCount={snapshotCount}
           />
         );
       })()}

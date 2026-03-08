@@ -17,11 +17,12 @@ interface MiniMetricStripProps {
   totalProviders?: number;
   networkSentMb?: number;
   networkRecvMb?: number;
+  snapshotCount?: number;
 }
 
 export function MiniMetricStrip({
   cpu, memory, disk, totalTokens, activeSessions, warnings, errors,
-  cpuAvg, memAvg, activeProviders, totalProviders, networkSentMb, networkRecvMb
+  cpuAvg, memAvg, activeProviders, totalProviders, networkSentMb, networkRecvMb, snapshotCount
 }: MiniMetricStripProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-2 p-4 bg-[#09090B] border-b border-[#2A2B30]">
@@ -29,14 +30,14 @@ export function MiniMetricStrip({
         icon={<Cpu className="w-4 h-4" />}
         label="CPU"
         value={`${cpu.toFixed(1)}%`}
-        sub={cpuAvg !== undefined ? `avg ${cpuAvg.toFixed(1)}%` : undefined}
+        sub={cpuAvg !== undefined ? `avg ${cpuAvg.toFixed(1)}% · ${snapshotCount ?? 0}pts` : undefined}
         status={cpu > 80 ? 'critical' : cpu > 60 ? 'warning' : 'normal'}
       />
       <MetricItem
         icon={<Activity className="w-4 h-4" />}
         label="MEM"
         value={`${memory.toFixed(1)}%`}
-        sub={memAvg !== undefined ? `avg ${memAvg.toFixed(1)}%` : undefined}
+        sub={memAvg !== undefined ? `avg ${memAvg.toFixed(1)}% · ${snapshotCount ?? 0}pts` : undefined}
         status={memory > 85 ? 'critical' : memory > 70 ? 'warning' : 'normal'}
       />
       <MetricItem
