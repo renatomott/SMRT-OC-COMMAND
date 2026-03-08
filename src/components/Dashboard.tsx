@@ -27,7 +27,7 @@ export function Dashboard() {
   const [history, setHistory] = useState<any[]>([]);
   const [llms, setLlms] = useState<LLMData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [simulating, setSimulating] = useState(false);
+  const [simulating, setSimulating] = useState(true);
   const [simulationScenario, setSimulationScenario] = useState('normal');
   const [opsMode, setOpsMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'operations' | 'diagnostics' | 'models' | 'simulation'>('operations');
@@ -206,62 +206,21 @@ export function Dashboard() {
                   { model: 'llama-3-70b', input: Math.floor(tokenUsage * 0.1), output: Math.floor(tokenUsage * 0.1), total: Math.floor(tokenUsage * 0.2) }
                 ]
               },
-              main_config: {}
-            },
-            sessions: {
-              count: Math.floor(Math.random() * 50),
-              size_mb: Math.floor(Math.random() * 500),
-              channels: {
-                whatsapp: Math.floor(Math.random() * 20),
-                discord: Math.floor(Math.random() * 10),
-                subagent: Math.floor(Math.random() * 5),
-                other: Math.floor(Math.random() * 15)
-              },
-              details: {
-                whatsapp: ['+1234567890', '+0987654321', '+1122334455'],
-                discord: ['general', 'support', 'voice-1']
+              main_config: {
+                ".env": { "OPENAI_API_KEY": "sk-...", "DISCORD_TOKEN": "..." }
               }
             },
-            cron: {
-              count: 3,
-              jobs: [
-                { schedule: '0 * * * *', command: 'backup.sh', last_run: '10 mins ago' },
-                { schedule: '*/5 * * * *', command: 'health-check.sh', last_run: '2 mins ago' },
-                { schedule: '0 0 * * *', command: 'daily-report.sh', last_run: '24 hours ago' }
-              ]
-            },
-            ollama: {
-              models: ['llama3', 'mistral', 'gemma']
-            },
-            integrations: {
-              env_keys: ['OPENAI_API_KEY', 'DISCORD_TOKEN', 'STRIPE_SECRET']
-            },
-            logs: {
-              gateway: {
-                total_lines: 15420,
-                size_mb: 45,
-                tail: [
-                  '[INFO] Gateway started on port 3000',
-                  '[INFO] Connected to database',
-                  errorCount > 0 ? '[ERROR] Provider connection failed' : '[INFO] Provider connection healthy',
-                  warningCount > 0 ? '[WARN] High memory usage detected' : '[INFO] System load normal',
-                  '[INFO] User connected: user_123',
-                  '[SUCCESS] Payment processed',
-                  `[INFO] System load: ${cpuLoad.toFixed(2)}`,
-                  `[INFO] Active sessions: ${Math.floor(Math.random() * 100)}`
-                ]
-              }
-            }
+            config: { ".env": { "OPENAI_API_KEY": "sk-...", "DISCORD_TOKEN": "..." } }
           },
           system: {
             cpu: {
-              usage: cpuLoad,
+              usage_pct: cpuLoad,
               physical_cores: 8,
               logical_cores: 16,
               freq_mhz_current: 3200
             },
             memory: {
-              usage: memoryLoad,
+              usage_pct: memoryLoad,
               total_gb: 32,
               free: 32 - (memoryLoad / 100 * 32),
               used_gb: (memoryLoad / 100 * 32),
@@ -270,7 +229,7 @@ export function Dashboard() {
               swap_used_gb: 2
             },
             disk: {
-              usage: 45 + Math.floor(Math.random() * 5),
+              usage_pct: 45 + Math.floor(Math.random() * 5),
               total: 512,
               free: 256,
               used_gb: 256,
@@ -280,11 +239,11 @@ export function Dashboard() {
                 write_mb: Math.floor(Math.random() * 50)
               },
               partitions: [
-                { mount: '/', device: '/dev/sda1', total: 512, used: 256, percent: 50 },
-                { mount: '/mnt/data', device: '/dev/sdb1', total: 1024, used: 100, percent: 10 }
+                { mountpoint: '/', device: '/dev/sda1', fstype: 'ext4', total_gb: 512, used_gb: 256, free_gb: 256, usage_pct: 50 },
+                { mountpoint: '/mnt/data', device: '/dev/sdb1', fstype: 'ext4', total_gb: 1024, used_gb: 100, free_gb: 924, usage_pct: 10 }
               ]
             },
-            load: {
+            load_avg: {
               "1min": 1.5,
               "5min": 1.2,
               "15min": 1.0
@@ -299,7 +258,10 @@ export function Dashboard() {
             }
           }
         };
-        await addDoc(collection(db, 'openclaw_telemetry'), mockData);
+        
+        // Update local state directly for immediate feedback
+        setData(mockData as unknown as TelemetryData);
+        setLoading(false);
       }, 3000);
     }
     return () => clearInterval(interval);
