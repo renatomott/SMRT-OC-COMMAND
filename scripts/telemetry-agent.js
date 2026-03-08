@@ -42,15 +42,20 @@ function getCpuUsage() {
   };
 }
 
+// Store previous CPU usage to calculate difference
 let startCpu = getCpuUsage();
 
 function getCpuLoad() {
   const endCpu = getCpuUsage();
   const idleDiff = endCpu.idle - startCpu.idle;
   const totalDiff = endCpu.total - startCpu.total;
-  const percentage = 100 - Math.floor((100 * idleDiff) / totalDiff);
   
+  // Update startCpu for the next interval
   startCpu = endCpu;
+
+  if (totalDiff === 0) return 0;
+
+  const percentage = 100 - Math.floor((100 * idleDiff) / totalDiff);
   return percentage;
 }
 
@@ -71,6 +76,10 @@ function getMemoryMetrics() {
 // Mock function for OpenClaw specific data
 // In a real integration, you would fetch this from your AI application's internal API or logs
 function getOpenClawMetrics() {
+  // Use current CPU load for logs
+  const currentCpu = getCpuLoad();
+  const currentMem = getMemoryMetrics().usage;
+
   return {
     status: 'online',
     directory: process.cwd(),
@@ -92,8 +101,8 @@ function getOpenClawMetrics() {
       gateway: {
         tail: [
           `[INFO] System heartbeat at ${new Date().toISOString()}`,
-          `[INFO] CPU Load: ${getCpuLoad()}%`,
-          `[INFO] Memory Usage: ${getMemoryMetrics().usage}%`
+          `[INFO] CPU Load: ${currentCpu}%`,
+          `[INFO] Memory Usage: ${currentMem}%`
         ]
       }
     }
@@ -104,9 +113,51 @@ function getOpenClawMetrics() {
 
 async function sendTelemetry() {
   try {
-    const cpuLoad = getCpuLoad();
+    // Calculate metrics
+    // Note: getCpuLoad updates the 'startCpu' state, so calling it inside getOpenClawMetrics 
+    // and here would cause issues if not careful. 
+    // We'll call it once here and pass it if needed, but getOpenClawMetrics calls it internally too.
+    // To fix this logic: we should just call it once per cycle.
+    
+    // Let's simplify: getCpuLoad() is called every 5 seconds by the interval.
+    // It measures the load SINCE THE LAST CALL.
+    
+    const cpuLoad = getCpuLoad(); 
     const memory = getMemoryMetrics();
-    const openClawData = getOpenClawMetrics();
+    
+    // We need to pass these values to getOpenClawMetrics to avoid re-calculating (and resetting) the CPU diff
+    // But getOpenClawMetrics is a mock, so let's just update it to use passed values or remove the internal call.
+    
+    // Redefining getOpenClawMetrics to accept params would be cleaner, but for now let's just
+    // fix the mock data generation inside the payload construction.
+    
+    const openClawData = {
+        status: 'online',
+        directory: process.cwd(),
+        api: { status: 'healthy', version: '1.2.0' },
+        processes: [
+          { pid: process.pid, name: 'telemetry-agent', status: 'running', cpu: Math.floor(Math.random() * 5), memory: Math.floor(process.memoryUsage().heapUsed / 1024 / 1024) }
+        ],
+        rich: {
+          token_usage: {
+            total_tokens: Math.floor(Math.random() * 10000) + 150000,
+            total_input: Math.floor(Math.random() * 5000) + 100000,
+            total_output: Math.floor(Math.random() * 5000) + 50000
+          },
+          sessions: {
+            count: Math.floor(Math.random() * 20) + 5
+          }
+        },
+        logs: {
+          gateway: {
+            tail: [
+              `[INFO] System heartbeat at ${new Date().toISOString()}`,
+              `[INFO] CPU Load: ${cpuLoad}%`,
+              `[INFO] Memory Usage: ${memory.usage}%`
+            ]
+          }
+        }
+    };
 
     const payload = {
       id: SYSTEM_ID,
