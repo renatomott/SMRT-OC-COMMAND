@@ -26,6 +26,8 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { LayoutDashboard, Activity, Brain, FileText } from 'lucide-react';
+import { HeroMetrics } from './HeroMetrics';
+import { OpenClawStatusCard } from './OpenClawStatusCard';
 
 export function Dashboard() {
   const [data, setData] = useState<TelemetryData | null>(null);
@@ -262,103 +264,145 @@ export function Dashboard() {
       </div>
 
       <div className="flex-1 p-6 overflow-y-auto">
-        {/* Level 2: Situational Layer (Operations Tab) */}
+        {/* Operations Tab */}
         {activeTab === 'operations' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column: System State */}
-            <div className="lg:col-span-2 space-y-6">
-              <SystemCorrelationChart 
-                history={history} 
-                cronJobs={data?.openclaw?.rich?.cron_jobs} 
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DiskForecast history={history} currentDisk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent} />
-                <ProcessTreemap processes={
-                  Array.isArray(data?.openclaw?.processes) 
-                    ? data.openclaw.processes 
-                    : []
-                } />
-              </div>
-            </div>
+          <div className="space-y-5">
+            {/* Hero metrics */}
+            <HeroMetrics
+              data={{
+                cpu: data?.system?.cpu?.usage_pct || data?.system?.cpu?.usage_percent || 0,
+                mem: data?.system?.memory?.usage_pct || data?.system?.memory?.usage_percent || 0,
+                disk: data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent || 0,
+                totalTokens: data?.openclaw?.rich?.token_usage?.total_tokens || 0,
+                sessions: data?.openclaw?.rich?.sessions?.count || 0,
+                apiStatus: data?.openclaw?.api?.found || false,
+              }}
+              history={history}
+            />
 
-            {/* Right Column: AI & Providers */}
-            <div className="space-y-6">
-              <TokenFlowPanel
-                promptTokens={data?.openclaw?.rich?.token_usage?.total_input || 0}
-                completionTokens={data?.openclaw?.rich?.token_usage?.total_output || 0}
-                totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
-                topModel={
-                  data?.openclaw?.rich?.token_usage?.per_model?.reduce(
-                    (top, m) => (!top || m.total > top.total ? m : top),
-                    null as any
-                  )?.model || '—'
-                }
-                requestsPerMin={
-                  data?.openclaw?.rich?.token_usage?.per_model?.reduce((s, m) => s + (m.calls || 0), 0) || 0
-                }
-                limit={200000000}
-              />
-              <ModelEfficiencyTable
-                models={
-                  llms.length > 0
-                    ? llms
-                    : (data?.openclaw?.rich?.token_usage?.per_model || []).map((m: any) => ({
-                        id: m.model,
-                        name: m.model,
-                        provider: m.provider || 'Unknown',
-                        state: 'online' as const,
-                        context_window: 0,
-                        max_tokens: 0,
-                      }))
-                }
-                tokenUsage={data?.openclaw?.rich?.token_usage || {}}
-              />
-              <ProviderHealth
-                models={
-                  llms.length > 0
-                    ? llms
-                    : Object.entries(data?.openclaw?.rich?.providers || {}).flatMap(
-                        ([providerName, p]: [string, any]) =>
-                          (p?.models || []).map((m: any) => ({
-                            id: m.id || m.name,
-                            name: m.name || m.id,
-                            provider: providerName,
-                            state: p?.api ? 'online' : 'offline',
-                            context_window: m.context_window,
-                            max_tokens: m.max_tokens,
-                          }))
-                      )
-                }
-              />
-              <ActivityHeatmap history={history} />
+            {/* Main 3-col grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Left: charts */}
+              <div className="lg:col-span-2 space-y-5">
+                <SystemCorrelationChart
+                  history={history}
+                  cronJobs={data?.openclaw?.rich?.cron_jobs}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <DiskForecast history={history} currentDisk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent} />
+                  <ProcessTreemap processes={Array.isArray(data?.openclaw?.processes) ? data.openclaw.processes : []} />
+                </div>
+              </div>
+
+              {/* Right: status + tokens + providers */}
+              <div className="space-y-5">
+                <OpenClawStatusCard data={data} />
+                <TokenFlowPanel
+                  promptTokens={data?.openclaw?.rich?.token_usage?.total_input || 0}
+                  completionTokens={data?.openclaw?.rich?.token_usage?.total_output || 0}
+                  totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
+                  topModel={
+                    data?.openclaw?.rich?.token_usage?.per_model?.reduce(
+                      (top: any, m: any) => (!top || m.total > top.total ? m : top),
+                      null as any
+                    )?.model || '—'
+                  }
+                  requestsPerMin={
+                    data?.openclaw?.rich?.token_usage?.per_model?.reduce((s: number, m: any) => s + (m.calls || 0), 0) || 0
+                  }
+                  limit={200000000}
+                />
+                <ProviderHealth
+                  models={
+                    llms.length > 0
+                      ? llms
+                      : Object.entries(data?.openclaw?.rich?.providers || {}).flatMap(
+                          ([providerName, p]: [string, any]) =>
+                            (p?.models || []).map((m: any) => ({
+                              id: m.id || m.name,
+                              name: m.name || m.id,
+                              provider: providerName,
+                              state: p?.api ? 'online' : 'offline',
+                              context_window: m.context_window,
+                              max_tokens: m.max_tokens,
+                            }))
+                        )
+                  }
+                />
+              </div>
             </div>
           </div>
         )}
 
-        {/* Level 3: Diagnostic Layer (Diagnostics Tab) */}
+        {/* Diagnostics Tab */}
         {activeTab === 'diagnostics' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            <div className="lg:col-span-2 space-y-6">
-              <SmartLogViewer logs={data?.openclaw?.rich?.gateway_log || { tail: [] }} className="h-[600px]" />
-              <ProcessTable processes={Array.isArray(data?.openclaw?.processes) ? data.openclaw.processes : []} />
-              <SystemDetails system={data?.system} />
+          <div className="space-y-5">
+            {/* Row 1: Log + Sessions side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div className="lg:col-span-2">
+                <SmartLogViewer logs={data?.openclaw?.rich?.gateway_log || { tail: [] }} className="h-[420px]" />
+              </div>
+              <div className="space-y-4">
+                <SessionList sessions={data?.openclaw?.rich?.sessions} />
+                <SyncHealth
+                  lastUpdated={data?.last_updated || data?.timestamp}
+                  deviceId={data?.id || data?.device_id}
+                />
+              </div>
             </div>
-            <div className="space-y-6">
-              <SessionList sessions={data?.openclaw?.rich?.sessions} />
-              <ChannelBreakdown sessions={data?.openclaw?.rich?.sessions} />
-              <IntegrationList data={data?.openclaw} />
-              <SyncHealth
-                lastUpdated={data?.last_updated || data?.timestamp}
-                deviceId={data?.id || data?.device_id}
-              />
+            {/* Row 2: Process table full width */}
+            <ProcessTable processes={Array.isArray(data?.openclaw?.processes) ? data.openclaw.processes : []} />
+            {/* Row 3: System details + Integrations */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div className="lg:col-span-2">
+                <SystemDetails system={data?.system} />
+              </div>
+              <div className="space-y-4">
+                <ChannelBreakdown sessions={data?.openclaw?.rich?.sessions} />
+                <IntegrationList data={data?.openclaw} />
+              </div>
             </div>
           </div>
         )}
 
         {/* Models Tab */}
         {activeTab === 'models' && (
-          <div className="space-y-6">
-            <LLMAnalytics usage={data?.openclaw?.rich?.token_usage} models={llms} />
+          <div className="space-y-5">
+            {/* KPI row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Total Tokens', value: (data?.openclaw?.rich?.token_usage?.total_tokens || 0).toLocaleString('pt-BR'), color: 'text-amber-400' },
+                { label: 'Prompt', value: (data?.openclaw?.rich?.token_usage?.total_input || 0).toLocaleString('pt-BR'), color: 'text-blue-400' },
+                { label: 'Completion', value: (data?.openclaw?.rich?.token_usage?.total_output || 0).toLocaleString('pt-BR'), color: 'text-purple-400' },
+                { label: 'Modelos Ativos', value: String(data?.openclaw?.rich?.token_usage?.per_model?.length || 0), color: 'text-cyan-400' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-[#0E0F11] border border-[#1E2030] rounded-xl p-4">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-[#8E9299] mb-2">{label}</div>
+                  <div className={`text-2xl font-black font-mono ${color}`}>{value}</div>
+                </div>
+              ))}
+            </div>
+            {/* Analytics + Efficiency side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div className="lg:col-span-2">
+                <LLMAnalytics usage={data?.openclaw?.rich?.token_usage} models={llms} />
+              </div>
+              <div>
+                <ModelEfficiencyTable
+                  models={
+                    llms.length > 0
+                      ? llms
+                      : (data?.openclaw?.rich?.token_usage?.per_model || []).map((m: any) => ({
+                          id: m.model, name: m.model,
+                          provider: m.provider || 'Unknown',
+                          state: 'online' as const,
+                          context_window: 0, max_tokens: 0,
+                        }))
+                  }
+                  tokenUsage={data?.openclaw?.rich?.token_usage || {}}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
