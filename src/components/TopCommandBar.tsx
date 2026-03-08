@@ -83,6 +83,23 @@ export function TopCommandBar({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Font size control */}
+        <div className="flex items-center bg-[#151619] border border-[#2A2B30] rounded overflow-hidden">
+          <button
+            onClick={() => onFontSizeChange?.(-1)}
+            disabled={fontSize <= 10}
+            className="px-2 py-1.5 text-[#8E9299] hover:text-white hover:bg-[#1E1F23] transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs font-mono font-bold"
+            title="Diminuir fonte"
+          >A−</button>
+          <span className="text-[9px] font-mono text-[#8E9299] px-1.5 border-x border-[#2A2B30] select-none tabular-nums">{fontSize}px</span>
+          <button
+            onClick={() => onFontSizeChange?.(1)}
+            disabled={fontSize >= 18}
+            className="px-2 py-1.5 text-[#8E9299] hover:text-white hover:bg-[#1E1F23] transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs font-mono font-bold"
+            title="Aumentar fonte"
+          >A+</button>
+        </div>
+
         <button onClick={onOpsMode} className="flex items-center gap-2 px-3 py-2 bg-[#151619] hover:bg-[#1E1F23] border border-[#2A2B30] rounded text-xs font-mono uppercase tracking-wider transition-colors text-white">
           <Monitor className="w-4 h-4" />
           <span className="hidden sm:inline">Ops Mode</span>
