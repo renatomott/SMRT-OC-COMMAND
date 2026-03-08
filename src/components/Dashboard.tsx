@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { TopCommandBar } from './TopCommandBar';
@@ -30,6 +30,7 @@ export function Dashboard() {
   const [simulating, setSimulating] = useState(true);
   const [simulationScenario, setSimulationScenario] = useState('normal');
   const [opsMode, setOpsMode] = useState(false);
+  const innerUnsubRef = useRef<(() => void) | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<'operations' | 'diagnostics' | 'models' | 'simulation'>('operations');
 
   useEffect(() => {
@@ -67,12 +68,9 @@ export function Dashboard() {
         limit(20)
       );
 
-      // Note: We need a separate unsubscribe for this inner listener
-      // Ideally we'd manage this with a ref or separate effect, but for simplicity:
-      // We'll just define it here. To avoid memory leaks in a real complex app we'd track it.
-      // For now, let's just let it run.
-      
-      onSnapshot(historyQuery, (histSnapshot) => {
+      // Cleanup previous inner listener before creating a new one (prevents memory leak)
+      if (innerUnsubRef.current) innerUnsubRef.current();
+      innerUnsubRef.current = onSnapshot(historyQuery, (histSnapshot) => {
         const historyData = histSnapshot.docs.reverse().map(doc => {
           const d = doc.data();
           // The snapshot doc contains compact data: cpu_pct, mem_pct, etc.
@@ -98,6 +96,7 @@ export function Dashboard() {
     return () => {
       unsubscribe();
       unsubscribeLlms();
+      if (innerUnsubRef.current) innerUnsubRef.current();
     };
   }, []);
 
@@ -268,8 +267,22 @@ export function Dashboard() {
   }, [simulating, simulationScenario]);
 
   const handleSync = async () => {
-    console.log("Triggering manual sync...");
-    alert("Manual sync triggered (simulated)");
+    try {
+      const res = await fetch('/.netlify/functions/trigger-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'all' }),
+      });
+      if (res.ok) {
+        console.log('✅ Sync triggered via GitHub Actions');
+      } else {
+        console.warn('Sync trigger returned status', res.status);
+        alert(`Sync request failed (HTTP ${res.status}). Check Netlify function logs.`);
+      }
+    } catch (err) {
+      console.error('Failed to trigger sync:', err);
+      alert('Could not reach /.netlify/functions/trigger-sync. Are you running on Netlify?');
+    }
   };
 
   if (loading) {
@@ -300,7 +313,7 @@ export function Dashboard() {
       <TopCommandBar 
         status={data?.openclaw?.status === 'running' ? 'online' : 'offline'}
         systemId={data?.hostname || data?.device_id || "OC-2024-X1"}
-        region={data?.system?.platform ? data.system.platform.toUpperCase() : "US-WEST-2"}
+        region={data?.id || data?.hostname || data?.device_id || 'OC-PROD'}
         simulating={simulating}
         onToggleSimulation={() => setSimulating(!simulating)}
         onSync={handleSync}
@@ -358,19 +371,53 @@ export function Dashboard() {
 
             {/* Right Column: AI & Providers */}
             <div className="space-y-6">
-              <TokenFlowPanel 
+              <TokenFlowPanel
                 promptTokens={data?.openclaw?.rich?.token_usage?.total_input || 0}
                 completionTokens={data?.openclaw?.rich?.token_usage?.total_output || 0}
                 totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
-                topModel="gpt-4" // Mock, could be derived
-                requestsPerMin={14} // Mock
-                limit={2000000} // Mock limit
+                topModel={
+                  data?.openclaw?.rich?.token_usage?.per_model?.reduce(
+                    (top, m) => (!top || m.total > top.total ? m : top),
+                    null as any
+                  )?.model || '—'
+                }
+                requestsPerMin={
+                  data?.openclaw?.rich?.token_usage?.per_model?.reduce((s, m) => s + (m.calls || 0), 0) || 0
+                }
+                limit={200000000}
               />
-              <ModelEfficiencyTable 
-                models={llms} 
-                tokenUsage={data?.openclaw?.rich?.token_usage || {}} 
+              <ModelEfficiencyTable
+                models={
+                  llms.length > 0
+                    ? llms
+                    : (data?.openclaw?.rich?.token_usage?.per_model || []).map((m: any) => ({
+                        id: m.model,
+                        name: m.model,
+                        provider: m.provider || 'Unknown',
+                        state: 'online' as const,
+                        context_window: 0,
+                        max_tokens: 0,
+                      }))
+                }
+                tokenUsage={data?.openclaw?.rich?.token_usage || {}}
               />
-              <ProviderHealth models={llms} />
+              <ProviderHealth
+                models={
+                  llms.length > 0
+                    ? llms
+                    : Object.entries(data?.openclaw?.rich?.providers || {}).flatMap(
+                        ([providerName, p]: [string, any]) =>
+                          (p?.models || []).map((m: any) => ({
+                            id: m.id || m.name,
+                            name: m.name || m.id,
+                            provider: providerName,
+                            state: p?.api ? 'online' : 'offline',
+                            context_window: m.context_window,
+                            max_tokens: m.max_tokens,
+                          }))
+                      )
+                }
+              />
               <ActivityHeatmap history={history} />
             </div>
           </div>

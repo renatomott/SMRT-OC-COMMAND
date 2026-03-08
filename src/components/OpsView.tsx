@@ -11,11 +11,11 @@ interface OpsViewProps {
 export function OpsView({ data, onExit }: OpsViewProps) {
   if (!data) return null;
 
-  const cpu = data.system?.cpu?.usage || 0;
-  const mem = data.system?.memory?.usage || 0;
-  const disk = data.system?.disk?.usage || 0;
+  const cpu  = data.system?.cpu?.usage_pct    ?? data.system?.cpu?.usage_percent    ?? data.system?.cpu?.usage    ?? 0;
+  const mem  = data.system?.memory?.usage_pct  ?? data.system?.memory?.usage_percent  ?? data.system?.memory?.usage  ?? 0;
+  const disk = data.system?.disk?.usage_pct    ?? data.system?.disk?.usage_percent    ?? data.system?.disk?.usage    ?? 0;
   const status = data.openclaw?.status || 'unknown';
-  const isHealthy = status === 'online' && cpu < 90 && mem < 90 && disk < 90;
+  const isHealthy = (status === 'online' || status === 'running') && cpu < 90 && mem < 90 && disk < 90;
 
   const cronJobs = data.openclaw?.rich?.cron_jobs?.jobs || [];
   const failingCron = cronJobs.filter(j => (j.consecutive_errors || 0) > 0);

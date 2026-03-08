@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Firebase service account — NUNCA commitar
+scripts/serviceAccountKey.json
+*serviceAccountKey*.json
