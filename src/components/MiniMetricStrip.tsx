@@ -1,0 +1,103 @@
+import React from 'react';
+import { Cpu, HardDrive, Activity, Brain, AlertTriangle, AlertCircle, Users } from 'lucide-react';
+import { clsx } from 'clsx';
+
+interface MiniMetricStripProps {
+  cpu: number;
+  memory: number;
+  disk: number;
+  tokensPerMin: number;
+  activeSessions: number;
+  warnings: number;
+  errors: number;
+}
+
+export function MiniMetricStrip({
+  cpu,
+  memory,
+  disk,
+  tokensPerMin,
+  activeSessions,
+  warnings,
+  errors
+}: MiniMetricStripProps) {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 p-4 bg-[#09090B] border-b border-[#2A2B30]">
+      <MetricItem 
+        icon={<Cpu className="w-4 h-4" />} 
+        label="CPU" 
+        value={`${cpu}%`} 
+        status={cpu > 80 ? 'critical' : cpu > 60 ? 'warning' : 'normal'} 
+      />
+      <MetricItem 
+        icon={<Activity className="w-4 h-4" />} 
+        label="MEM" 
+        value={`${memory}%`} 
+        status={memory > 80 ? 'critical' : memory > 60 ? 'warning' : 'normal'} 
+      />
+      <MetricItem 
+        icon={<HardDrive className="w-4 h-4" />} 
+        label="DISK" 
+        value={`${disk}%`} 
+        status={disk > 90 ? 'critical' : disk > 75 ? 'warning' : 'normal'} 
+      />
+      <MetricItem 
+        icon={<Brain className="w-4 h-4" />} 
+        label="TOKENS/MIN" 
+        value={tokensPerMin.toLocaleString()} 
+        status={tokensPerMin > 10000 ? 'warning' : 'normal'} 
+      />
+      <MetricItem 
+        icon={<Users className="w-4 h-4" />} 
+        label="SESSIONS" 
+        value={activeSessions.toString()} 
+        status="normal" 
+      />
+      <MetricItem 
+        icon={<AlertTriangle className="w-4 h-4" />} 
+        label="WARNINGS" 
+        value={warnings.toString()} 
+        status={warnings > 0 ? 'warning' : 'normal'} 
+      />
+      <MetricItem 
+        icon={<AlertCircle className="w-4 h-4" />} 
+        label="ERRORS" 
+        value={errors.toString()} 
+        status={errors > 0 ? 'critical' : 'normal'} 
+      />
+    </div>
+  );
+}
+
+interface MetricItemProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  status: 'normal' | 'warning' | 'critical';
+}
+
+function MetricItem({ icon, label, value, status }: MetricItemProps) {
+  return (
+    <div className={clsx("flex items-center gap-3 p-2 rounded border transition-colors", {
+      "bg-[#151619] border-[#2A2B30]": status === 'normal',
+      "bg-yellow-500/10 border-yellow-500/20 text-yellow-500": status === 'warning',
+      "bg-red-500/10 border-red-500/20 text-red-500": status === 'critical'
+    })}>
+      <div className={clsx("p-1.5 rounded", {
+        "bg-[#2A2B30] text-[#8E9299]": status === 'normal',
+        "bg-yellow-500/20 text-yellow-500": status === 'warning',
+        "bg-red-500/20 text-red-500": status === 'critical'
+      })}>
+        {icon}
+      </div>
+      <div>
+        <div className="text-[10px] font-mono uppercase tracking-wider text-[#8E9299] leading-none mb-1">{label}</div>
+        <div className={clsx("text-sm font-mono font-bold leading-none", {
+          "text-white": status === 'normal',
+          "text-yellow-500": status === 'warning',
+          "text-red-500": status === 'critical'
+        })}>{value}</div>
+      </div>
+    </div>
+  );
+}

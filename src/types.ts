@@ -63,10 +63,19 @@ export interface SessionData {
   };
 }
 
+export interface ProcessData {
+  pid: number;
+  name: string;
+  status: string;
+  cpu: number;
+  memory: number;
+}
+
 export interface CronJob {
   schedule: string;
   command?: string;
   last_run?: string;
+  consecutive_errors?: number;
 }
 
 export interface LLMData {
