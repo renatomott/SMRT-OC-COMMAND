@@ -139,20 +139,63 @@ export function Dashboard() {
 
         const mockData = {
           createdAt: serverTimestamp(),
+          device_id: 'SIM-001',
+          hostname: 'SIMULATOR',
+          timestamp: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
+          system: {
+            platform: 'linux',
+            cpu: { usage_pct: cpuLoad, physical_cores: 8, logical_cores: 16, freq_mhz_current: 2400 },
+            memory: { usage_pct: memoryLoad, total_gb: 32, available_gb: 32 * (1 - memoryLoad / 100), used_gb: 32 * (memoryLoad / 100), swap_pct: 5, swap_used_gb: 0.5 },
+            disk: { usage_pct: 75, total_gb: 1024, used_gb: 768, free_gb: 256, io: { read_mb: 12, write_mb: 8 }, partitions: [] },
+            network: { bytes_sent_mb: 150, bytes_recv_mb: 300 },
+            uptime: { boot_time: new Date(Date.now() - 86400000).toISOString(), uptime_hours: 24 },
+            load_avg: { '1min': 1.5, '5min': 1.2, '15min': 1.0 }
+          },
           openclaw: {
             status: providerStatus === 'offline' ? 'degraded' : 'online',
             directory: '/var/www/openclaw',
             api: { status: 'healthy', version: '1.2.0' },
             processes: [
-              { pid: 1234, name: 'claw-control', status: 'running', cpu: cpuLoad, memory: 128 },
-              { pid: 5678, name: 'video-stream', status: 'running', cpu: Math.floor(Math.random() * 50), memory: 512 },
-              { pid: 9012, name: 'payment-gateway', status: 'sleeping', cpu: 0, memory: 64 },
-              { pid: 3456, name: 'node-worker-1', status: 'running', cpu: Math.floor(Math.random() * 20), memory: memoryLoad * 10 },
-              { pid: 7890, name: 'node-worker-2', status: 'running', cpu: Math.floor(Math.random() * 25), memory: 256 }
+              { pid: 1234, name: 'claw-control', status: 'running', cpu_pct: cpuLoad, mem_mb: 128, cmdline: 'claw-control', started: '' },
+              { pid: 5678, name: 'video-stream', status: 'running', cpu_pct: Math.floor(Math.random() * 50), mem_mb: 512, cmdline: 'video-stream', started: '' },
+              { pid: 9012, name: 'payment-gateway', status: 'sleeping', cpu_pct: 0, mem_mb: 64, cmdline: 'payment-gateway', started: '' },
+              { pid: 3456, name: 'node-worker-1', status: 'running', cpu_pct: Math.floor(Math.random() * 20), mem_mb: memoryLoad * 10, cmdline: 'node-worker-1', started: '' },
+              { pid: 7890, name: 'node-worker-2', status: 'running', cpu_pct: Math.floor(Math.random() * 25), mem_mb: 256, cmdline: 'node-worker-2', started: '' }
             ],
             rich: {
-              providers: { discord: true, twitch: false, youtube: true },
-              sessions: { active_users: Math.floor(Math.random() * 100), queue: Math.floor(Math.random() * 10) },
+              providers: { ollama: { base_url: '', api: false, model_count: 0, models: [] } },
+              ollama_models: [{ name: 'llama3', size: 0, digest: '', modified_at: '' }],
+              sessions: {
+                count: Math.floor(Math.random() * 50),
+                size_mb: Math.floor(Math.random() * 500),
+                channels: {
+                  whatsapp: Math.floor(Math.random() * 20),
+                  discord: Math.floor(Math.random() * 10),
+                  subagent: Math.floor(Math.random() * 5),
+                  other: Math.floor(Math.random() * 15)
+                },
+                whatsapp_contacts: ['+1234567890', '+0987654321', '+1122334455'],
+                discord_channels: ['general', 'support', 'voice-1']
+              },
+              cron_jobs: {
+                count: 3,
+                jobs: [
+                  { schedule: '0 * * * *', name: 'backup.sh', last_run_at: '10 mins ago', next_run_at: '50 mins' },
+                  { schedule: '*/5 * * * *', name: 'health-check.sh', last_run_at: '2 mins ago', next_run_at: '3 mins' },
+                  { schedule: '0 0 * * *', name: 'daily-report.sh', last_run_at: '24 hours ago', next_run_at: 'tomorrow' }
+                ]
+              },
+              gateway_log: {
+                size_mb: 5,
+                total_lines: 1000,
+                tail: [
+                  "[INFO] System started",
+                  "[INFO] Connected to database",
+                  providerStatus === 'offline' ? "[ERROR] Provider connection failed" : "[INFO] Provider connected",
+                  "[WARN] High memory usage detected"
+                ]
+              },
               token_usage: {
                 total_tokens: tokenUsage,
                 total_input: Math.floor(tokenUsage * 0.7),
@@ -163,14 +206,7 @@ export function Dashboard() {
                   { model: 'llama-3-70b', input: Math.floor(tokenUsage * 0.1), output: Math.floor(tokenUsage * 0.1), total: Math.floor(tokenUsage * 0.2) }
                 ]
               },
-              cron_jobs: {
-                count: 3,
-                jobs: [
-                  { schedule: '0 * * * *', command: 'backup.sh', last_run: '10 mins ago' },
-                  { schedule: '*/5 * * * *', command: 'health-check.sh', last_run: '2 mins ago' },
-                  { schedule: '0 0 * * *', command: 'daily-report.sh', last_run: '24 hours ago' }
-                ]
-              }
+              main_config: {}
             },
             sessions: {
               count: Math.floor(Math.random() * 50),
@@ -300,9 +336,9 @@ export function Dashboard() {
     <div className="min-h-screen bg-[#09090B] text-white font-sans flex flex-col">
       {/* Level 1: Command Layer */}
       <TopCommandBar 
-        status={data?.openclaw?.status === 'online' ? 'online' : 'offline'}
-        systemId="OC-2024-X1"
-        region="US-WEST-2"
+        status={data?.openclaw?.status === 'running' ? 'online' : 'offline'}
+        systemId={data?.hostname || data?.device_id || "OC-2024-X1"}
+        region={data?.system?.platform ? data.system.platform.toUpperCase() : "US-WEST-2"}
         simulating={simulating}
         onToggleSimulation={() => setSimulating(!simulating)}
         onSync={handleSync}
@@ -312,11 +348,11 @@ export function Dashboard() {
       />
       
       <MiniMetricStrip 
-        cpu={data?.system?.cpu?.usage || 0}
-        memory={data?.system?.memory?.usage || 0}
-        disk={data?.system?.disk?.usage || 0}
-        tokensPerMin={Math.floor((data?.openclaw?.rich?.token_usage?.total_tokens || 0) / 60)} // Approx
-        activeSessions={data?.openclaw?.sessions?.count || 0}
+        cpu={data?.system?.cpu?.usage_pct || data?.system?.cpu?.usage_percent || 0}
+        memory={data?.system?.memory?.usage_pct || data?.system?.memory?.usage_percent || 0}
+        disk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent || 0}
+        totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
+        activeSessions={data?.openclaw?.rich?.sessions?.count || 0}
         warnings={simulationScenario === 'memory_leak' ? 5 : 0} // Mock from scenario
         errors={simulationScenario === 'provider_outage' ? 15 : 0} // Mock from scenario
       />
@@ -349,13 +385,11 @@ export function Dashboard() {
                 cronJobs={data?.openclaw?.rich?.cron_jobs} 
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DiskForecast history={history} currentDisk={data?.system?.disk?.usage} />
+                <DiskForecast history={history} currentDisk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent} />
                 <ProcessTreemap processes={
                   Array.isArray(data?.openclaw?.processes) 
                     ? data.openclaw.processes 
-                    : typeof data?.openclaw?.processes === 'object' && data?.openclaw?.processes !== null
-                      ? Object.values(data.openclaw.processes)
-                      : []
+                    : []
                 } />
               </div>
             </div>
@@ -384,12 +418,12 @@ export function Dashboard() {
         {activeTab === 'diagnostics' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             <div className="lg:col-span-2 space-y-6">
-              <SmartLogViewer logs={data?.openclaw?.logs?.gateway || { tail: [] }} className="h-[600px]" />
+              <SmartLogViewer logs={data?.openclaw?.rich?.gateway_log || { tail: [] }} className="h-[600px]" />
               <SystemDetails system={data?.system} />
             </div>
             <div className="space-y-6">
-              <SessionList sessions={data?.openclaw?.sessions} />
-              <ChannelBreakdown sessions={data?.openclaw?.sessions} />
+              <SessionList sessions={data?.openclaw?.rich?.sessions} />
+              <ChannelBreakdown sessions={data?.openclaw?.rich?.sessions} />
               <IntegrationList data={data?.openclaw} />
             </div>
           </div>

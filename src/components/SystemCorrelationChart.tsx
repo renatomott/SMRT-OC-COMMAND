@@ -21,7 +21,7 @@ export function SystemCorrelationChart({ history, cronJobs, className }: SystemC
     // Since we don't have real timestamps for cron runs in the mock data, 
     // we'll simulate markers for demonstration purposes based on the job schedule
     return {
-      label: job.command,
+      label: job.name || 'Job',
       time: history[Math.floor(Math.random() * history.length)]?.timestamp // Random placement for demo
     };
   }) || [];

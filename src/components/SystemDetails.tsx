@@ -34,7 +34,7 @@ export function SystemDetails({ system, className }: SystemDetailsProps) {
           <div className="flex justify-between">
             <span className="text-[#8E9299]">Load (1m/5m/15m)</span>
             <span className="text-white">
-              {system.load ? `${system.load['1min']} / ${system.load['5min']} / ${system.load['15min']}` : '-'}
+              {system.load_avg ? `${system.load_avg['1min']} / ${system.load_avg['5min']} / ${system.load_avg['15min']}` : '-'}
             </span>
           </div>
         </div>
@@ -50,17 +50,17 @@ export function SystemDetails({ system, className }: SystemDetailsProps) {
           <div className="flex justify-between">
             <span className="text-[#8E9299]">Used / Total</span>
             <span className="text-white">
-              {system.memory?.used_gb || '-'} GB / {system.memory?.total_gb || '-'} GB
+              {system.memory?.used_gb?.toFixed(1) || '-'} GB / {system.memory?.total_gb?.toFixed(1) || '-'} GB
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-[#8E9299]">Available</span>
-            <span className="text-white">{system.memory?.available_gb || '-'} GB</span>
+            <span className="text-white">{system.memory?.available_gb?.toFixed(1) || '-'} GB</span>
           </div>
           <div className="flex justify-between">
             <span className="text-[#8E9299]">Swap Usage</span>
             <span className="text-white">
-              {system.memory?.swap_pct || 0}% ({system.memory?.swap_used_gb || 0} GB)
+              {system.memory?.swap_pct || 0}% ({system.memory?.swap_used_gb?.toFixed(1) || 0} GB)
             </span>
           </div>
         </div>
@@ -76,7 +76,7 @@ export function SystemDetails({ system, className }: SystemDetailsProps) {
           <div className="flex justify-between">
             <span className="text-[#8E9299]">Used / Total</span>
             <span className="text-white">
-              {system.disk?.used_gb || '-'} GB / {system.disk?.total_gb || '-'} GB
+              {system.disk?.used_gb?.toFixed(1) || '-'} GB / {system.disk?.total_gb?.toFixed(1) || '-'} GB
             </span>
           </div>
           {system.disk?.io && (
@@ -92,8 +92,8 @@ export function SystemDetails({ system, className }: SystemDetailsProps) {
               <h4 className="text-[#8E9299] mb-2">Partitions</h4>
               {system.disk.partitions.map((p, i) => (
                 <div key={i} className="flex justify-between mb-1">
-                  <span className="text-[#8E9299]">{p.mount}</span>
-                  <span className="text-white">{p.percent}% ({p.used}GB)</span>
+                  <span className="text-[#8E9299]">{p.mountpoint}</span>
+                  <span className="text-white">{p.usage_pct}% ({p.used_gb?.toFixed(1)}GB)</span>
                 </div>
               ))}
             </div>

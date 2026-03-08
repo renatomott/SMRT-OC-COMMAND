@@ -10,6 +10,13 @@ interface IntegrationListProps {
 }
 
 export function IntegrationList({ data, className }: IntegrationListProps) {
+  if (!data) return null;
+
+  const envKeys = data.config?.[".env"] ? Object.keys(data.config[".env"]) : (data.integrations?.env_keys || []);
+  const ollamaModels = data.rich?.ollama_models?.map(m => m.name) || data.ollama?.models || [];
+  const cronJobs = data.rich?.cron_jobs?.jobs || data.cron?.jobs || [];
+  const cronCount = data.rich?.cron_jobs?.count || data.cron?.count || 0;
+
   return (
     <div className={twMerge("grid grid-cols-1 md:grid-cols-2 gap-6", className)}>
       {/* Environment Keys */}
@@ -19,8 +26,8 @@ export function IntegrationList({ data, className }: IntegrationListProps) {
           <h3 className="text-[#8E9299] text-xs font-mono uppercase tracking-wider">Configured Integrations</h3>
         </div>
         <ul className="space-y-2 font-mono text-xs max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-          {data.integrations?.env_keys?.length ? (
-            data.integrations.env_keys.map((key, i) => (
+          {envKeys.length ? (
+            envKeys.map((key, i) => (
               <li key={i} className="flex items-center justify-between text-white bg-[#1A1B1F] p-2 rounded border border-[#2A2B30]/50">
                 <span className="truncate max-w-[200px]">{key}</span>
                 <span className="text-green-500 text-[10px] uppercase bg-green-500/10 px-1.5 py-0.5 rounded">Configured</span>
@@ -39,8 +46,8 @@ export function IntegrationList({ data, className }: IntegrationListProps) {
           <h3 className="text-[#8E9299] text-xs font-mono uppercase tracking-wider">Ollama Models</h3>
         </div>
         <ul className="space-y-2 font-mono text-xs max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-          {data.ollama?.models?.length ? (
-            data.ollama.models.map((model, i) => (
+          {ollamaModels.length ? (
+            ollamaModels.map((model, i) => (
               <li key={i} className="flex items-center gap-2 text-white bg-[#1A1B1F] p-2 rounded border border-[#2A2B30]/50">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                 {model}
@@ -57,7 +64,7 @@ export function IntegrationList({ data, className }: IntegrationListProps) {
         <div className="flex items-center gap-2 mb-4">
           <Terminal className="w-4 h-4 text-[#8E9299]" />
           <h3 className="text-[#8E9299] text-xs font-mono uppercase tracking-wider">
-            Cron Jobs ({data.cron?.count || 0})
+            Cron Jobs ({cronCount})
           </h3>
         </div>
         <div className="overflow-x-auto">
@@ -70,12 +77,12 @@ export function IntegrationList({ data, className }: IntegrationListProps) {
               </tr>
             </thead>
             <tbody className="text-white">
-              {data.cron?.jobs?.length ? (
-                data.cron.jobs.map((job, i) => (
+              {cronJobs.length ? (
+                cronJobs.map((job, i) => (
                   <tr key={i} className="border-b border-[#2A2B30] last:border-0 hover:bg-[#1E1F23] transition-colors">
                     <td className="py-2 text-yellow-500 font-bold">{job.schedule}</td>
-                    <td className="py-2 text-[#8E9299]">{job.command || 'Unknown Command'}</td>
-                    <td className="py-2 text-right text-[#8E9299]">{job.last_run || '-'}</td>
+                    <td className="py-2 text-[#8E9299]">{job.name || job.command || 'Unknown Command'}</td>
+                    <td className="py-2 text-right text-[#8E9299]">{job.last_run_at || job.last_run || '-'}</td>
                   </tr>
                 ))
               ) : (

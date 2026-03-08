@@ -2,10 +2,10 @@ import React from 'react';
 import { Treemap, Tooltip, ResponsiveContainer } from 'recharts';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { ProcessData } from '../types';
+import { OpenClawProcess } from '../types';
 
 interface ProcessTreemapProps {
-  processes: ProcessData[];
+  processes: OpenClawProcess[];
   className?: string;
 }
 
@@ -15,8 +15,8 @@ export function ProcessTreemap({ processes, className }: ProcessTreemapProps) {
   // Transform processes for Treemap
   const data = processes.map(p => ({
     name: p.name,
-    size: p.memory, // Size = Memory
-    cpu: p.cpu,     // Color = CPU
+    size: p.mem_mb, // Size = Memory
+    cpu: p.cpu_pct, // Color = CPU
     pid: p.pid
   }));
 

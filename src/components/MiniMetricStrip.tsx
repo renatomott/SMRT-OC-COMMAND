@@ -6,7 +6,7 @@ interface MiniMetricStripProps {
   cpu: number;
   memory: number;
   disk: number;
-  tokensPerMin: number;
+  totalTokens: number;
   activeSessions: number;
   warnings: number;
   errors: number;
@@ -16,7 +16,7 @@ export function MiniMetricStrip({
   cpu,
   memory,
   disk,
-  tokensPerMin,
+  totalTokens,
   activeSessions,
   warnings,
   errors
@@ -43,9 +43,9 @@ export function MiniMetricStrip({
       />
       <MetricItem 
         icon={<Brain className="w-4 h-4" />} 
-        label="TOKENS/MIN" 
-        value={tokensPerMin.toLocaleString()} 
-        status={tokensPerMin > 10000 ? 'warning' : 'normal'} 
+        label="TOTAL TOKENS" 
+        value={totalTokens.toLocaleString()} 
+        status={totalTokens > 1000000 ? 'warning' : 'normal'} 
       />
       <MetricItem 
         icon={<Users className="w-4 h-4" />} 
