@@ -9,6 +9,9 @@ import { SmartLogViewer } from './SmartLogViewer';
 import { SystemCorrelationChart } from './SystemCorrelationChart';
 import { DiskForecast } from './DiskForecast';
 import { ProcessTreemap } from './ProcessTreemap';
+import { ProcessTable } from './ProcessTable';
+import { SyncHealth } from './SyncHealth';
+import { PdfReport } from './PdfReport';
 import { ProviderHealth } from './ProviderHealth';
 import { ActivityHeatmap } from './ActivityHeatmap';
 import { SessionList } from './SessionList';
@@ -29,7 +32,16 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [opsMode, setOpsMode] = useState(false);
   const innerUnsubRef = useRef<(() => void) | undefined>(undefined);
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+  const [pwaInstalled, setPwaInstalled] = React.useState(false);
   const [activeTab, setActiveTab] = useState<'operations' | 'diagnostics' | 'models'>('operations');
+
+  useEffect(() => {
+    const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setPwaInstalled(true));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   useEffect(() => {
     // 1. Listen to the MAIN collection to find the active device(s)
@@ -98,6 +110,13 @@ export function Dashboard() {
   }, []);
 
 
+  const handleInstallPwa = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+  };
+
   const handleSync = async () => {
     try {
       const res = await fetch('/.netlify/functions/trigger-sync', {
@@ -141,13 +160,29 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-[#09090B] text-white font-sans flex flex-col">
       {/* Level 1: Command Layer */}
-      <TopCommandBar 
-        status={data?.openclaw?.status === 'running' ? 'online' : 'offline'}
-        systemId={data?.hostname || data?.device_id || "OC-2024-X1"}
-        region={data?.id || data?.hostname || data?.device_id || 'OC-PROD'}
-        onSync={handleSync}
-        onOpsMode={() => setOpsMode(true)}
-      />
+      <div className="flex items-center justify-between bg-[#09090B] border-b border-[#2A2B30] sticky top-0 z-50">
+        <div className="flex-1">
+          <TopCommandBar
+            status={data?.openclaw?.status === 'running' ? 'online' : 'offline'}
+            systemId={data?.hostname || data?.device_id || "OC-2024-X1"}
+            region={data?.id || data?.hostname || data?.device_id || 'OC-PROD'}
+            onSync={handleSync}
+            onOpsMode={() => setOpsMode(true)}
+          />
+        </div>
+        <div className="flex items-center gap-2 pr-4">
+          <PdfReport data={data} />
+          {!pwaInstalled && deferredPrompt && (
+            <button
+              onClick={handleInstallPwa}
+              className="flex items-center gap-2 px-3 py-2 bg-[#151619] hover:bg-[#1E1F23] border border-[#2A2B30] rounded text-xs font-mono uppercase tracking-wider transition-colors text-white"
+              title="Instalar como App"
+            >
+              <span>⬇ App</span>
+            </button>
+          )}
+        </div>
+      </div>
       
       <MiniMetricStrip 
         cpu={data?.system?.cpu?.usage_pct || data?.system?.cpu?.usage_percent || 0}
@@ -255,12 +290,17 @@ export function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             <div className="lg:col-span-2 space-y-6">
               <SmartLogViewer logs={data?.openclaw?.rich?.gateway_log || { tail: [] }} className="h-[600px]" />
+              <ProcessTable processes={Array.isArray(data?.openclaw?.processes) ? data.openclaw.processes : []} />
               <SystemDetails system={data?.system} />
             </div>
             <div className="space-y-6">
               <SessionList sessions={data?.openclaw?.rich?.sessions} />
               <ChannelBreakdown sessions={data?.openclaw?.rich?.sessions} />
               <IntegrationList data={data?.openclaw} />
+              <SyncHealth
+                lastUpdated={data?.last_updated || data?.timestamp}
+                deviceId={data?.id || data?.device_id}
+              />
             </div>
           </div>
         )}
