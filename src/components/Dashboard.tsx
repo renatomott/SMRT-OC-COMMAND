@@ -197,15 +197,35 @@ export function Dashboard() {
         </div>
       </div>
       
-      <MiniMetricStrip 
-        cpu={data?.system?.cpu?.usage_pct || data?.system?.cpu?.usage_percent || 0}
-        memory={data?.system?.memory?.usage_pct || data?.system?.memory?.usage_percent || 0}
-        disk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent || 0}
-        totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
-        activeSessions={data?.openclaw?.rich?.sessions?.count || 0}
-        warnings={0}
-        errors={0}
-      />
+      {(() => {
+        // Médias dos últimos snapshots
+        const cpuVals = history.map((h: any) => h.cpu_pct).filter((v: any) => v != null);
+        const memVals = history.map((h: any) => h.mem_pct).filter((v: any) => v != null);
+        const cpuAvg = cpuVals.length ? cpuVals.reduce((a: number, b: number) => a + b, 0) / cpuVals.length : undefined;
+        const memAvg = memVals.length ? memVals.reduce((a: number, b: number) => a + b, 0) / memVals.length : undefined;
+        // Providers ativos vs total
+        const providers = data?.openclaw?.rich?.providers || {};
+        const providerEntries = Object.values(providers) as any[];
+        const totalProviders = providerEntries.length;
+        const activeProviders = providerEntries.filter((p: any) => p?.enabled || p?.active || p?.status === 'active').length;
+        return (
+          <MiniMetricStrip
+            cpu={data?.system?.cpu?.usage_pct || data?.system?.cpu?.usage_percent || 0}
+            memory={data?.system?.memory?.usage_pct || data?.system?.memory?.usage_percent || 0}
+            disk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent || 0}
+            totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
+            activeSessions={data?.openclaw?.rich?.sessions?.count || 0}
+            warnings={0}
+            errors={0}
+            cpuAvg={cpuAvg}
+            memAvg={memAvg}
+            activeProviders={activeProviders}
+            totalProviders={totalProviders}
+            networkSentMb={data?.system?.network?.bytes_sent_mb}
+            networkRecvMb={data?.system?.network?.bytes_recv_mb}
+          />
+        );
+      })()}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 px-6 pt-6 border-b border-[#2A2B30] overflow-x-auto">
