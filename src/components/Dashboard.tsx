@@ -270,8 +270,6 @@ export function Dashboard() {
           <div className="space-y-6">
             <LLMAnalytics usage={data?.openclaw?.rich?.token_usage} models={llms} />
           </div>
-        
-          </div>
         )}
       </div>
     </div>
