@@ -28,6 +28,14 @@ import { clsx } from 'clsx';
 import { LayoutDashboard, Activity, Brain, FileText } from 'lucide-react';
 import { HeroMetrics } from './HeroMetrics';
 import { OpenClawStatusCard } from './OpenClawStatusCard';
+import { IntelligencePanel } from './IntelligencePanel';
+import { SystemHealthScore } from './SystemHealthScore';
+import { LoadAverageWidget } from './LoadAverageWidget';
+import { CronHealthPanel } from './CronHealthPanel';
+import { MultiTimeline } from './MultiTimeline';
+import { ModelInsightsTable } from './ModelInsightsTable';
+import { MemoryPressureWidget } from './MemoryPressureWidget';
+import { generateInsights, computeHealthScore } from '../lib/insightEngine';
 
 export function Dashboard() {
   const [data, setData] = useState<TelemetryData | null>(null);
@@ -81,25 +89,37 @@ export function Dashboard() {
 
       // 2. Listen to the SNAPSHOTS subcollection for History
       // Path: openclaw_telemetry/{deviceId}/snapshots
+      // 300 pts ≈ 5 horas de histórico (sync a cada 60s)
       const historyQuery = query(
         collection(db, 'openclaw_telemetry', deviceId, 'snapshots'),
-        orderBy('timestamp', 'desc'), // Assuming the script saves a 'timestamp' field or we use document ID if it's ISO
-        limit(20)
+        orderBy('timestamp', 'desc'),
+        limit(300)
       );
 
-      // Cleanup previous inner listener before creating a new one (prevents memory leak)
       if (innerUnsubRef.current) innerUnsubRef.current();
       innerUnsubRef.current = onSnapshot(historyQuery, (histSnapshot) => {
         const historyData = histSnapshot.docs.reverse().map(doc => {
           const d = doc.data();
-          // The snapshot doc contains compact data: cpu_pct, mem_pct, etc.
-          // We need to map it to the format expected by the charts
+          let tsDate: Date;
+          if (d.timestamp?.toDate) tsDate = d.timestamp.toDate();
+          else if (d.timestamp) tsDate = new Date(d.timestamp);
+          else tsDate = new Date();
           return {
-            timestamp: d.timestamp?.toDate ? format(d.timestamp.toDate(), 'HH:mm:ss') : format(new Date(d.timestamp || Date.now()), 'HH:mm:ss'),
-            cpu: d.cpu_pct || d.system?.cpu?.usage_percent || 0,
-            memory: d.mem_pct || d.system?.memory?.usage_percent || 0,
-            disk: d.disk_pct || d.system?.disk?.usage_percent || 0,
-            tokens: 0 // Snapshots might not have tokens to save space, as per user description
+            timestamp: format(tsDate, 'HH:mm'),
+            _ts: tsDate.getTime(),
+            cpu:    d.cpu_pct    ?? d.system?.cpu?.usage_percent    ?? 0,
+            memory: d.mem_pct    ?? d.system?.memory?.usage_percent  ?? 0,
+            disk:   d.disk_pct   ?? d.system?.disk?.usage_percent    ?? 0,
+            load1:       d.load_1m  ?? d.system?.load_avg?.['1min']   ?? null,
+            load5:       d.load_5m  ?? d.system?.load_avg?.['5min']   ?? null,
+            load15:      d.load_15m ?? d.system?.load_avg?.['15min']  ?? null,
+            swap_pct:    d.swap_pct ?? d.system?.memory?.swap_pct     ?? null,
+            net_sent_mb: d.net_sent_mb ?? d.system?.network?.bytes_sent_mb ?? null,
+            net_recv_mb: d.net_recv_mb ?? d.system?.network?.bytes_recv_mb ?? null,
+            disk_read_mb:  d.disk_read_mb  ?? d.system?.disk?.io?.read_mb  ?? null,
+            disk_write_mb: d.disk_write_mb ?? d.system?.disk?.io?.write_mb ?? null,
+            cpu_pct: d.cpu_pct ?? 0,
+            mem_pct: d.mem_pct ?? 0,
           };
         });
         setHistory(historyData);
@@ -265,9 +285,16 @@ export function Dashboard() {
 
       <div className="flex-1 p-6 overflow-y-auto">
         {/* Operations Tab */}
-        {activeTab === 'operations' && (
+        {activeTab === 'operations' && (() => {
+          const insights = generateInsights(data, history);
+          const healthScore = computeHealthScore(data, history);
+          const load1  = data?.system?.load_avg?.['1min']  ?? 0;
+          const load5  = data?.system?.load_avg?.['5min']  ?? 0;
+          const load15 = data?.system?.load_avg?.['15min'] ?? 0;
+          const cronJobs = data?.openclaw?.rich?.cron_jobs?.jobs ?? [];
+          return (
           <div className="space-y-5">
-            {/* Hero metrics */}
+            {/* Row 1: Hero metrics */}
             <HeroMetrics
               data={{
                 cpu: data?.system?.cpu?.usage_pct || data?.system?.cpu?.usage_percent || 0,
@@ -280,59 +307,70 @@ export function Dashboard() {
               history={history}
             />
 
-            {/* Main 3-col grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              {/* Left: charts */}
-              <div className="lg:col-span-2 space-y-5">
-                <SystemCorrelationChart
-                  history={history}
-                  cronJobs={data?.openclaw?.rich?.cron_jobs}
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <DiskForecast history={history} currentDisk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent} />
-                  <ProcessTreemap processes={Array.isArray(data?.openclaw?.processes) ? data.openclaw.processes : []} />
-                </div>
-              </div>
+            {/* Row 2: Intelligence strip */}
+            <IntelligencePanel insights={insights} />
 
-              {/* Right: status + tokens + providers */}
+            {/* Row 3: Health + Load + Cron + Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <SystemHealthScore score={healthScore} />
+              <LoadAverageWidget
+                load1={load1} load5={load5} load15={load15}
+                physicalCores={data?.system?.cpu?.physical_cores || 4}
+              />
+              <CronHealthPanel jobs={cronJobs} />
+              <OpenClawStatusCard data={data} />
+            </div>
+
+            {/* Row 4: Multi-timeline (full width) */}
+            <MultiTimeline history={history} cronJobs={data?.openclaw?.rich?.cron_jobs} />
+
+            {/* Row 5: Memory + ProcessTreemap + TokenFlow + Providers */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div className="space-y-5">
-                <OpenClawStatusCard data={data} />
+                <MemoryPressureWidget
+                  totalGb={data?.system?.memory?.total_gb || 0}
+                  usedGb={data?.system?.memory?.used_gb || 0}
+                  availableGb={data?.system?.memory?.available_gb || 0}
+                  swapTotalGb={data?.system?.memory?.swap_total_gb}
+                  swapUsedGb={data?.system?.memory?.swap_used_gb}
+                  swapPct={data?.system?.memory?.swap_pct}
+                  topProcesses={data?.system?.top_processes || []}
+                />
+                <ProviderHealth
+                  models={llms.length > 0 ? llms
+                    : Object.entries(data?.openclaw?.rich?.providers || {}).flatMap(
+                        ([providerName, p]: [string, any]) =>
+                          (p?.models || []).map((m: any) => ({
+                            id: m.id || m.name, name: m.name || m.id,
+                            provider: providerName,
+                            state: p?.api ? 'online' : 'offline',
+                            context_window: m.context_window,
+                            max_tokens: m.max_tokens,
+                          }))
+                      )
+                  }
+                />
+              </div>
+              <div className="space-y-5">
+                <ProcessTreemap processes={Array.isArray(data?.openclaw?.processes) ? data.openclaw.processes : []} />
+                <DiskForecast history={history} currentDisk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent} />
+              </div>
+              <div>
                 <TokenFlowPanel
                   promptTokens={data?.openclaw?.rich?.token_usage?.total_input || 0}
                   completionTokens={data?.openclaw?.rich?.token_usage?.total_output || 0}
                   totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
-                  topModel={
-                    data?.openclaw?.rich?.token_usage?.per_model?.reduce(
-                      (top: any, m: any) => (!top || m.total > top.total ? m : top),
-                      null as any
-                    )?.model || '—'
-                  }
-                  requestsPerMin={
-                    data?.openclaw?.rich?.token_usage?.per_model?.reduce((s: number, m: any) => s + (m.calls || 0), 0) || 0
-                  }
+                  topModel={data?.openclaw?.rich?.token_usage?.per_model?.reduce(
+                    (top: any, m: any) => (!top || m.total > top.total ? m : top), null as any
+                  )?.model || '—'}
+                  requestsPerMin={data?.openclaw?.rich?.token_usage?.per_model?.reduce((s: number, m: any) => s + (m.calls || 0), 0) || 0}
                   limit={200000000}
-                />
-                <ProviderHealth
-                  models={
-                    llms.length > 0
-                      ? llms
-                      : Object.entries(data?.openclaw?.rich?.providers || {}).flatMap(
-                          ([providerName, p]: [string, any]) =>
-                            (p?.models || []).map((m: any) => ({
-                              id: m.id || m.name,
-                              name: m.name || m.id,
-                              provider: providerName,
-                              state: p?.api ? 'online' : 'offline',
-                              context_window: m.context_window,
-                              max_tokens: m.max_tokens,
-                            }))
-                        )
-                  }
                 />
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Diagnostics Tab */}
         {activeTab === 'diagnostics' && (
@@ -368,38 +406,41 @@ export function Dashboard() {
         {/* Models Tab */}
         {activeTab === 'models' && (
           <div className="space-y-5">
-            {/* KPI row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Total Tokens', value: (data?.openclaw?.rich?.token_usage?.total_tokens || 0).toLocaleString('pt-BR'), color: 'text-amber-400' },
-                { label: 'Prompt', value: (data?.openclaw?.rich?.token_usage?.total_input || 0).toLocaleString('pt-BR'), color: 'text-blue-400' },
-                { label: 'Completion', value: (data?.openclaw?.rich?.token_usage?.total_output || 0).toLocaleString('pt-BR'), color: 'text-purple-400' },
-                { label: 'Modelos Ativos', value: String(data?.openclaw?.rich?.token_usage?.per_model?.length || 0), color: 'text-cyan-400' },
-              ].map(({ label, value, color }) => (
-                <div key={label} className="bg-[#0E0F11] border border-[#1E2030] rounded-xl p-4">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-[#8E9299] mb-2">{label}</div>
-                  <div className={`text-2xl font-black font-mono ${color}`}>{value}</div>
-                </div>
-              ))}
-            </div>
-            {/* Analytics + Efficiency side by side */}
+            {/* Model Insights Table — full analytics */}
+            <ModelInsightsTable
+              tokenUsage={data?.openclaw?.rich?.token_usage}
+              ollamaModels={data?.openclaw?.rich?.ollama_models}
+            />
+            {/* LLMAnalytics charts below */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2">
                 <LLMAnalytics usage={data?.openclaw?.rich?.token_usage} models={llms} />
               </div>
-              <div>
+              <div className="space-y-5">
                 <ModelEfficiencyTable
-                  models={
-                    llms.length > 0
-                      ? llms
-                      : (data?.openclaw?.rich?.token_usage?.per_model || []).map((m: any) => ({
-                          id: m.model, name: m.model,
-                          provider: m.provider || 'Unknown',
-                          state: 'online' as const,
-                          context_window: 0, max_tokens: 0,
-                        }))
+                  models={llms.length > 0 ? llms
+                    : (data?.openclaw?.rich?.token_usage?.per_model || []).map((m: any) => ({
+                        id: m.model, name: m.model,
+                        provider: m.provider || 'Unknown',
+                        state: 'online' as const,
+                        context_window: 0, max_tokens: 0,
+                      }))
                   }
                   tokenUsage={data?.openclaw?.rich?.token_usage || {}}
+                />
+                <ProviderHealth
+                  models={llms.length > 0 ? llms
+                    : Object.entries(data?.openclaw?.rich?.providers || {}).flatMap(
+                        ([providerName, p]: [string, any]) =>
+                          (p?.models || []).map((m: any) => ({
+                            id: m.id || m.name, name: m.name || m.id,
+                            provider: providerName,
+                            state: p?.api ? 'online' : 'offline',
+                            context_window: m.context_window,
+                            max_tokens: m.max_tokens,
+                          }))
+                      )
+                  }
                 />
               </div>
             </div>
