@@ -1,0 +1,107 @@
+{
+  "entities": {
+    "Telemetry": {
+      "title": "Telemetry",
+      "description": "Telemetry data from the OpenClaw machine",
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the telemetry data"
+        },
+        "openclaw": {
+          "type": "object",
+          "description": "OpenClaw specific data",
+          "properties": {
+            "status": {
+              "type": "string",
+              "description": "Current status of the machine"
+            },
+            "directory": {
+              "type": "string",
+              "description": "Current working directory"
+            },
+            "api": {
+              "type": "object",
+              "description": "API status and details"
+            },
+            "processes": {
+              "type": "object",
+              "description": "Running processes"
+            },
+            "rich": {
+              "type": "object",
+              "description": "Rich presence data including token usage, providers, sessions, cron jobs, etc."
+            },
+            "sessions": {
+              "type": "object",
+              "description": "Session data"
+            },
+            "cron": {
+              "type": "object",
+              "description": "Cron jobs"
+            },
+            "ollama": {
+              "type": "object",
+              "description": "Ollama models"
+            },
+            "integrations": {
+              "type": "object",
+              "description": "Integrations"
+            },
+            "logs": {
+              "type": "object",
+              "description": "Logs"
+            }
+          }
+        },
+        "system": {
+          "type": "object",
+          "description": "System metrics"
+        }
+      },
+      "required": ["createdAt", "openclaw", "system"]
+    },
+    "LLM": {
+      "title": "LLM",
+      "description": "LLM Model Catalog and State",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "provider": { "type": "string" },
+        "state": { "type": "string" },
+        "context_window": { "type": "number" },
+        "max_tokens": { "type": "number" }
+      }
+    },
+    "UsageLog": {
+      "title": "Usage Log",
+      "description": "Token usage logs",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "llmId": { "type": "string" },
+        "provider": { "type": "string" },
+        "promptTokens": { "type": "number" },
+        "completionTokens": { "type": "number" },
+        "totalTokens": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "openclaw_telemetry/{telemetryId}": {
+      "schema": "Telemetry",
+      "description": "Collection of telemetry data"
+    },
+    "llms/{llmId}": {
+      "schema": "LLM",
+      "description": "Catalog of LLM models"
+    },
+    "usage_logs/{logId}": {
+      "schema": "UsageLog",
+      "description": "Logs of token usage"
+    }
+  }
+}
+

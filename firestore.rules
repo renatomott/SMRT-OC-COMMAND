@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Validate required fields exist
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate that the document contains only the allowed fields
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Validate string length
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    // Validate ISO 8601 date string format (YYYY-MM-DDTHH:MM:SS)
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidTelemetry(data) {
+      return hasRequiredFields(['createdAt', 'openclaw', 'system']) &&
+             // Validate createdAt
+             (data.createdAt is timestamp || (data.createdAt is string && isValidDateString(data.createdAt))) &&
+             
+             // Validate openclaw object structure
+             data.openclaw is map &&
+             data.openclaw.keys().hasAll(['status', 'directory', 'api']) &&
+             
+             // Validate system object structure
+             data.system is map &&
+             data.system.keys().hasAll(['cpu', 'memory', 'disk']);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /openclaw_telemetry/{telemetryId} {
+      // Allow read if authenticated
+      allow read: if isAuthenticated();
+
+      // Allow create if authenticated and valid
+      allow create: if isAuthenticated() && isValidTelemetry(request.resource.data);
+
+      // Allow update if authenticated and valid (though telemetry is usually immutable, allowing updates for correction/enrichment)
+      allow update: if isAuthenticated() && isValidTelemetry(request.resource.data);
+
+      // Allow delete if authenticated (e.g. cleanup)
+      allow delete: if isAuthenticated();
+    }
+
+    match /llms/{llmId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Allow write for catalog updates
+    }
+
+    match /usage_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Allow logging usage
+      allow update: if false; // Logs should be immutable
+      allow delete: if isAuthenticated(); // Allow cleanup
+    }
+  }
+}
