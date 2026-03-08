@@ -10,3 +10,28 @@ body {
   background-color: #09090B;
   color: #FFFFFF;
 }
+
+/* ── Font size scaling ───────────────────── */
+:root {
+  --dash-font-size: 13px;
+}
+
+/* Scale all mono text (most of the dashboard) with the variable */
+.font-mono,
+[class*="font-mono"] {
+  font-size: calc(var(--dash-font-size) * 0.85);
+}
+
+/* Scale base text */
+body {
+  font-size: var(--dash-font-size);
+}
+
+/* Keep headers/labels proportional */
+.text-xs    { font-size: calc(var(--dash-font-size) * 0.85); }
+.text-sm    { font-size: calc(var(--dash-font-size) * 0.92); }
+.text-base  { font-size: var(--dash-font-size); }
+.text-lg    { font-size: calc(var(--dash-font-size) * 1.15); }
+.text-xl    { font-size: calc(var(--dash-font-size) * 1.25); }
+.text-2xl   { font-size: calc(var(--dash-font-size) * 1.5);  }
+.text-3xl   { font-size: calc(var(--dash-font-size) * 1.875);}

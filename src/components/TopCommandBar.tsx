@@ -15,10 +15,12 @@ interface TopCommandBarProps {
   apiFound?: boolean;
   userEmail?: string;
   onOpsMode: () => void;
+  fontSize?: number;
+  onFontSizeChange?: (delta: number) => void;
 }
 
 export function TopCommandBar({
-  status, systemId, region, directory, apiPort, apiBaseUrl, apiFound, userEmail, onOpsMode,
+  status, systemId, region, directory, apiPort, apiBaseUrl, apiFound, userEmail, onOpsMode, fontSize = 13, onFontSizeChange,
 }: TopCommandBarProps) {
   const isDown = status === 'offline';
 

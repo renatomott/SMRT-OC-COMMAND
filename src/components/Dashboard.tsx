@@ -43,6 +43,19 @@ export function Dashboard() {
   const [llms, setLlms] = useState<LLMData[]>([]);
   const [loading, setLoading] = useState(true);
   const [opsMode, setOpsMode] = useState(false);
+  const [fontSize, setFontSize] = useState<number>(() => {
+    try { return parseFloat(localStorage.getItem('smrt-fontsize') || '13'); } catch { return 13; }
+  });
+
+  // Apply font size to root element
+  useEffect(() => {
+    document.documentElement.style.setProperty('--dash-font-size', `${fontSize}px`);
+    try { localStorage.setItem('smrt-fontsize', String(fontSize)); } catch {}
+  }, [fontSize]);
+
+  const changeFontSize = (delta: number) => {
+    setFontSize(prev => Math.min(18, Math.max(10, prev + delta)));
+  };
   const innerUnsubRef = useRef<(() => void) | undefined>(undefined);
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
@@ -184,6 +197,8 @@ export function Dashboard() {
             apiBaseUrl={data?.openclaw?.api?.base_url}
             userEmail={currentUser?.email || undefined}
             onOpsMode={() => setOpsMode(true)}
+            fontSize={fontSize}
+            onFontSizeChange={changeFontSize}
           />
         </div>
         <div className="flex items-center gap-2 pr-4">
