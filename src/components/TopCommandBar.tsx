@@ -14,12 +14,11 @@ interface TopCommandBarProps {
   apiBaseUrl?: string;
   apiFound?: boolean;
   userEmail?: string;
-  onSync: () => void;
   onOpsMode: () => void;
 }
 
 export function TopCommandBar({
-  status, systemId, region, directory, apiPort, apiBaseUrl, apiFound, userEmail, onSync, onOpsMode,
+  status, systemId, region, directory, apiPort, apiBaseUrl, apiFound, userEmail, onOpsMode,
 }: TopCommandBarProps) {
   const isDown = status === 'offline';
 
@@ -82,9 +81,6 @@ export function TopCommandBar({
       </div>
 
       <div className="flex items-center gap-2">
-        <button onClick={onSync} className="p-2 text-[#8E9299] hover:text-white hover:bg-[#151619] rounded border border-transparent hover:border-[#2A2B30] transition-all" title="Sync">
-          <RefreshCw className="w-4 h-4" />
-        </button>
         <button onClick={onOpsMode} className="flex items-center gap-2 px-3 py-2 bg-[#151619] hover:bg-[#1E1F23] border border-[#2A2B30] rounded text-xs font-mono uppercase tracking-wider transition-colors text-white">
           <Monitor className="w-4 h-4" />
           <span className="hidden sm:inline">Ops Mode</span>

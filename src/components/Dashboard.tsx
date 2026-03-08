@@ -147,24 +147,6 @@ export function Dashboard() {
     setDeferredPrompt(null);
   };
 
-  const handleSync = async () => {
-    try {
-      const res = await fetch('/.netlify/functions/trigger-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'all' }),
-      });
-      if (res.ok) {
-        console.log('✅ Sync triggered via GitHub Actions');
-      } else {
-        console.warn('Sync trigger returned status', res.status);
-        alert(`Sync request failed (HTTP ${res.status}). Check Netlify function logs.`);
-      }
-    } catch (err) {
-      console.error('Failed to trigger sync:', err);
-      alert('Could not reach /.netlify/functions/trigger-sync. Are you running on Netlify?');
-    }
-  };
 
   if (loading) {
     return (
@@ -201,7 +183,6 @@ export function Dashboard() {
             apiPort={data?.openclaw?.api?.port}
             apiBaseUrl={data?.openclaw?.api?.base_url}
             userEmail={currentUser?.email || undefined}
-            onSync={handleSync}
             onOpsMode={() => setOpsMode(true)}
           />
         </div>
