@@ -2,7 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SystemMetrics } from '../types';
-import { Cpu, HardDrive, Activity, Clock, Network, Thermometer } from 'lucide-react';
+import { Cpu, HardDrive, Activity, Clock, Network, Thermometer, Zap } from 'lucide-react';
 
 interface SystemDetailsProps {
   system: SystemMetrics;
@@ -37,7 +37,7 @@ export function SystemDetails({ system, className }: SystemDetailsProps) {
                 : '-'}
             </span>
           </div>
-          {system.temperature?.cpu_celsius && (
+          {system.temperature?.cpu_celsius && parseFloat(system.temperature.cpu_celsius) > 0 && (
             <div className="flex justify-between">
               <span className="text-[#8E9299]">Temperatura CPU</span>
               <span className={
@@ -148,6 +148,43 @@ export function SystemDetails({ system, className }: SystemDetailsProps) {
           </div>
         </div>
       </div>
+      {/* Power Section — Apple Silicon */}
+      {(system as any).power?.cpu_mw !== undefined && (
+        <div className="bg-[#151619] border border-[#2A2B30] rounded-lg p-4 shadow-sm md:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#8E9299]" />
+              <h3 className="text-[#8E9299] text-xs font-mono uppercase tracking-wider">Apple Silicon Power</h3>
+            </div>
+            <span className={clsx('text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold', {
+              'bg-green-500/10 text-green-400': (system as any).power?.thermal_pressure === 'Nominal' || (system as any).power?.thermal_pressure === 'nominal',
+              'bg-yellow-500/10 text-yellow-400': (system as any).power?.thermal_pressure === 'Fair' || (system as any).power?.thermal_pressure === 'fair',
+              'bg-orange-500/10 text-orange-400': (system as any).power?.thermal_pressure === 'Serious' || (system as any).power?.thermal_pressure === 'serious',
+              'bg-red-500/10 text-red-400': (system as any).power?.thermal_pressure === 'Critical' || (system as any).power?.thermal_pressure === 'critical',
+            })}>
+              {(system as any).power?.thermal_pressure || 'unknown'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-xs">
+            {[
+              { label: 'CPU Power', value: (system as any).power?.cpu_mw, color: 'text-blue-400' },
+              { label: 'GPU Power', value: (system as any).power?.gpu_mw, color: 'text-purple-400' },
+              { label: 'ANE Power', value: (system as any).power?.ane_mw, color: 'text-yellow-400' },
+              { label: 'Combined', value: (system as any).power?.combined_mw, color: 'text-white' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-[#1A1B1F] p-3 rounded border border-[#2A2B30]">
+                <div className="text-[#8E9299] text-[10px] uppercase tracking-wider mb-1">{label}</div>
+                <div className={clsx('text-lg font-bold', color)}>
+                  {value !== null && value !== undefined ? `${value} mW` : '—'}
+                </div>
+                {value !== null && value !== undefined && (
+                  <div className="text-[#8E9299] text-[9px] mt-0.5">{(value / 1000).toFixed(2)} W</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
