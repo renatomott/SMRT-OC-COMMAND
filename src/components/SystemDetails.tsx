@@ -2,7 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SystemMetrics } from '../types';
-import { Cpu, HardDrive, Activity, Clock, Network } from 'lucide-react';
+import { Cpu, HardDrive, Activity, Clock, Network, Thermometer } from 'lucide-react';
 
 interface SystemDetailsProps {
   system: SystemMetrics;
@@ -28,9 +28,26 @@ export function SystemDetails({ system, className }: SystemDetailsProps) {
             <span className="text-white">{system.cpu?.logical_cores || '-'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#8E9299]">Frequency</span>
-            <span className="text-white">{system.cpu?.freq_mhz_current ? `${system.cpu.freq_mhz_current} MHz` : '-'}</span>
+            <span className="text-[#8E9299]">Frequência</span>
+            <span className="text-white">
+              {system.cpu?.freq_mhz_current
+                ? system.cpu.freq_mhz_current >= 1000
+                  ? `${(system.cpu.freq_mhz_current / 1000).toFixed(2)} GHz`
+                  : `${system.cpu.freq_mhz_current} MHz`
+                : '-'}
+            </span>
           </div>
+          {system.temperature?.cpu_celsius && (
+            <div className="flex justify-between">
+              <span className="text-[#8E9299]">Temperatura CPU</span>
+              <span className={
+                parseFloat(system.temperature.cpu_celsius) > 85 ? 'text-red-400' :
+                parseFloat(system.temperature.cpu_celsius) > 70 ? 'text-yellow-400' : 'text-green-400'
+              }>
+                {system.temperature.cpu_celsius}°C
+              </span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-[#8E9299]">Load (1m/5m/15m)</span>
             <span className="text-white">

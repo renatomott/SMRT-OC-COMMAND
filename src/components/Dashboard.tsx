@@ -202,6 +202,20 @@ export function Dashboard() {
         const cpuVals = history.map((h: any) => h.cpu_pct).filter((v: any) => v != null);
         const memVals = history.map((h: any) => h.mem_pct).filter((v: any) => v != null);
         const snapshotCount = history.length;
+
+        // Tokens/hora: baseado nos snapshots com timestamp mais antigo e mais recente
+        let tokensPerHour: number | undefined = undefined;
+        if (history.length >= 2 && data?.openclaw?.rich?.token_usage?.total_tokens) {
+          const oldest = history[history.length - 1];
+          const newest = history[0];
+          if (oldest?.timestamp && newest?.timestamp) {
+            const diffHours = (new Date(newest.timestamp).getTime() - new Date(oldest.timestamp).getTime()) / 3600000;
+            if (diffHours > 0) {
+              // Estimativa baseada na taxa de crescimento dos tokens totais vs janela de tempo
+              tokensPerHour = Math.round(data.openclaw.rich.token_usage.total_tokens / Math.max(diffHours, 1));
+            }
+          }
+        }
         const cpuAvg = cpuVals.length ? cpuVals.reduce((a: number, b: number) => a + b, 0) / cpuVals.length : undefined;
         const memAvg = memVals.length ? memVals.reduce((a: number, b: number) => a + b, 0) / memVals.length : undefined;
         // Providers ativos vs total
@@ -225,6 +239,7 @@ export function Dashboard() {
             networkSentMb={data?.system?.network?.bytes_sent_mb}
             networkRecvMb={data?.system?.network?.bytes_recv_mb}
             snapshotCount={snapshotCount}
+            tokensPerHour={tokensPerHour}
           />
         );
       })()}

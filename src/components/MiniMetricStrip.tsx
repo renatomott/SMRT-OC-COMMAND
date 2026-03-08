@@ -18,11 +18,12 @@ interface MiniMetricStripProps {
   networkSentMb?: number;
   networkRecvMb?: number;
   snapshotCount?: number;
+  tokensPerHour?: number;
 }
 
 export function MiniMetricStrip({
   cpu, memory, disk, totalTokens, activeSessions, warnings, errors,
-  cpuAvg, memAvg, activeProviders, totalProviders, networkSentMb, networkRecvMb, snapshotCount
+  cpuAvg, memAvg, activeProviders, totalProviders, networkSentMb, networkRecvMb, snapshotCount, tokensPerHour
 }: MiniMetricStripProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-2 p-4 bg-[#09090B] border-b border-[#2A2B30]">
@@ -50,6 +51,7 @@ export function MiniMetricStrip({
         icon={<Brain className="w-4 h-4" />}
         label="TOKENS"
         value={totalTokens > 1e6 ? `${(totalTokens/1e6).toFixed(1)}M` : totalTokens.toLocaleString()}
+        sub={tokensPerHour !== undefined ? `${tokensPerHour.toLocaleString()}/h` : undefined}
         status={totalTokens > 1000000 ? 'warning' : 'normal'}
       />
       <MetricItem
