@@ -27,7 +27,7 @@ export function Dashboard() {
   const [history, setHistory] = useState<any[]>([]);
   const [llms, setLlms] = useState<LLMData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [simulating, setSimulating] = useState(true);
+  const [simulating, setSimulating] = useState(false);
   const [simulationScenario, setSimulationScenario] = useState('normal');
   const [opsMode, setOpsMode] = useState(false);
   const innerUnsubRef = useRef<(() => void) | undefined>(undefined);
