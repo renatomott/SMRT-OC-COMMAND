@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, query, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, doc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { TopCommandBar } from './TopCommandBar';
 import { MiniMetricStrip } from './MiniMetricStrip';
@@ -36,16 +36,15 @@ export function Dashboard() {
   useEffect(() => {
     // 1. Listen to the MAIN collection to find the active device(s)
     // We limit to 1 because the user's script updates a single document "Mac-mini-de-Mott.local"
-    const q = query(collection(db, 'openclaw_telemetry'), limit(1));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
+    const DEVICE_ID = 'Mac-mini-de-Mott.local';
+    const deviceRef = doc(db, 'openclaw_telemetry', DEVICE_ID);
+
+    const unsubscribe = onSnapshot(deviceRef, (mainDoc) => {
+      if (!mainDoc.exists()) {
         setLoading(false);
         return;
       }
 
-      // Get the first available device document
-      const mainDoc = snapshot.docs[0];
       const mainData = mainDoc.data();
       const deviceId = mainDoc.id;
 
