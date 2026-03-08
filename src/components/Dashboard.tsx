@@ -270,11 +270,7 @@ export function Dashboard() {
           <div className="space-y-6">
             <LLMAnalytics usage={data?.openclaw?.rich?.token_usage} models={llms} />
           </div>
-        )}</span>
-            </p>
-            <p className="text-sm text-[#8E9299]">
-              Use the controls in the Top Command Bar to change scenarios.
-            </p>
+        
           </div>
         )}
       </div>
