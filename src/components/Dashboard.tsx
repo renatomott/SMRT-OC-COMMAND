@@ -21,6 +21,8 @@ import { OpsView } from './OpsView';
 import { LLMAnalytics } from './LLMAnalytics';
 import { SystemDetails } from './SystemDetails';
 import { TelemetryData, LLMData } from '../types';
+import { auth } from '../services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
 import { LayoutDashboard, Activity, Brain, FileText } from 'lucide-react';
@@ -32,9 +34,15 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [opsMode, setOpsMode] = useState(false);
   const innerUnsubRef = useRef<(() => void) | undefined>(undefined);
+  const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
   const [pwaInstalled, setPwaInstalled] = React.useState(false);
   const [activeTab, setActiveTab] = useState<'operations' | 'diagnostics' | 'models'>('operations');
+
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (u) => setCurrentUser(u));
+    return () => unsubAuth();
+  }, []);
 
   useEffect(() => {
     const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -163,9 +171,14 @@ export function Dashboard() {
       <div className="flex items-center justify-between bg-[#09090B] border-b border-[#2A2B30] sticky top-0 z-50">
         <div className="flex-1">
           <TopCommandBar
-            status={data?.openclaw?.status === 'running' ? 'online' : 'offline'}
-            systemId={data?.hostname || data?.device_id || "OC-2024-X1"}
-            region={data?.id || data?.hostname || data?.device_id || 'OC-PROD'}
+            status={data?.openclaw?.status === 'running' || data?.openclaw?.status === 'online' ? 'online' : 'offline'}
+            systemId={data?.id || data?.hostname || data?.device_id || 'OC-2024-X1'}
+            region={data?.system?.platform?.hostname || data?.hostname || data?.device_id || 'Mac-mini'}
+            directory={data?.openclaw?.directory}
+            apiFound={data?.openclaw?.api?.found}
+            apiPort={data?.openclaw?.api?.port}
+            apiBaseUrl={data?.openclaw?.api?.base_url}
+            userEmail={currentUser?.email || undefined}
             onSync={handleSync}
             onOpsMode={() => setOpsMode(true)}
           />
