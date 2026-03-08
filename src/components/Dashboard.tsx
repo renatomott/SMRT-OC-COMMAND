@@ -20,18 +20,16 @@ import { SystemDetails } from './SystemDetails';
 import { TelemetryData, LLMData } from '../types';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
-import { LayoutDashboard, Activity, Brain, Play, FileText } from 'lucide-react';
+import { LayoutDashboard, Activity, Brain, FileText } from 'lucide-react';
 
 export function Dashboard() {
   const [data, setData] = useState<TelemetryData | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [llms, setLlms] = useState<LLMData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [simulating, setSimulating] = useState(false);
-  const [simulationScenario, setSimulationScenario] = useState('normal');
   const [opsMode, setOpsMode] = useState(false);
   const innerUnsubRef = useRef<(() => void) | undefined>(undefined);
-  const [activeTab, setActiveTab] = useState<'operations' | 'diagnostics' | 'models' | 'simulation'>('operations');
+  const [activeTab, setActiveTab] = useState<'operations' | 'diagnostics' | 'models'>('operations');
 
   useEffect(() => {
     // 1. Listen to the MAIN collection to find the active device(s)
@@ -99,171 +97,6 @@ export function Dashboard() {
     };
   }, []);
 
-  // Simulation Logic with Scenarios
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (simulating) {
-      if (llms.length === 0) {
-        setLlms([
-          { id: '1', name: 'gpt-4', provider: 'OpenAI', state: 'online', context_window: 128000, max_tokens: 4096 },
-          { id: '2', name: 'claude-3-opus', provider: 'Anthropic', state: 'active', context_window: 200000, max_tokens: 4096 },
-          { id: '3', name: 'llama-3-70b', provider: 'Groq', state: 'online', context_window: 8192, max_tokens: 8192 },
-          { id: '4', name: 'gemini-1.5-pro', provider: 'Google', state: 'maintenance', context_window: 1000000, max_tokens: 8192 }
-        ]);
-      }
-
-      interval = setInterval(async () => {
-        // Scenario modifiers
-        let cpuLoad = Math.floor(Math.random() * 30);
-        let memoryLoad = Math.floor(Math.random() * 40);
-        let tokenUsage = 150000 + Math.floor(Math.random() * 5000);
-        let errorCount = 0;
-        let warningCount = 0;
-        let providerStatus = 'online';
-
-        if (simulationScenario === 'heavy_llm') {
-          tokenUsage = 500000 + Math.floor(Math.random() * 100000);
-          cpuLoad = 80 + Math.floor(Math.random() * 15);
-        } else if (simulationScenario === 'memory_leak') {
-          memoryLoad = Math.min(95, memoryLoad + (history.length * 2)); // Increasing memory
-          warningCount = 5;
-        } else if (simulationScenario === 'token_spike') {
-          tokenUsage = 1000000;
-          warningCount = 2;
-        } else if (simulationScenario === 'provider_outage') {
-          providerStatus = 'offline';
-          errorCount = 15;
-        }
-
-        const mockData = {
-          createdAt: serverTimestamp(),
-          device_id: 'SIM-001',
-          hostname: 'SIMULATOR',
-          timestamp: new Date().toISOString(),
-          last_updated: new Date().toISOString(),
-          system: {
-            platform: 'linux',
-            cpu: { usage_pct: cpuLoad, physical_cores: 8, logical_cores: 16, freq_mhz_current: 2400 },
-            memory: { usage_pct: memoryLoad, total_gb: 32, available_gb: 32 * (1 - memoryLoad / 100), used_gb: 32 * (memoryLoad / 100), swap_pct: 5, swap_used_gb: 0.5 },
-            disk: { usage_pct: 75, total_gb: 1024, used_gb: 768, free_gb: 256, io: { read_mb: 12, write_mb: 8 }, partitions: [] },
-            network: { bytes_sent_mb: 150, bytes_recv_mb: 300 },
-            uptime: { boot_time: new Date(Date.now() - 86400000).toISOString(), uptime_hours: 24 },
-            load_avg: { '1min': 1.5, '5min': 1.2, '15min': 1.0 }
-          },
-          openclaw: {
-            status: providerStatus === 'offline' ? 'degraded' : 'online',
-            directory: '/var/www/openclaw',
-            api: { status: 'healthy', version: '1.2.0' },
-            processes: [
-              { pid: 1234, name: 'claw-control', status: 'running', cpu_pct: cpuLoad, mem_mb: 128, cmdline: 'claw-control', started: '' },
-              { pid: 5678, name: 'video-stream', status: 'running', cpu_pct: Math.floor(Math.random() * 50), mem_mb: 512, cmdline: 'video-stream', started: '' },
-              { pid: 9012, name: 'payment-gateway', status: 'sleeping', cpu_pct: 0, mem_mb: 64, cmdline: 'payment-gateway', started: '' },
-              { pid: 3456, name: 'node-worker-1', status: 'running', cpu_pct: Math.floor(Math.random() * 20), mem_mb: memoryLoad * 10, cmdline: 'node-worker-1', started: '' },
-              { pid: 7890, name: 'node-worker-2', status: 'running', cpu_pct: Math.floor(Math.random() * 25), mem_mb: 256, cmdline: 'node-worker-2', started: '' }
-            ],
-            rich: {
-              providers: { ollama: { base_url: '', api: false, model_count: 0, models: [] } },
-              ollama_models: [{ name: 'llama3', size: 0, digest: '', modified_at: '' }],
-              sessions: {
-                count: Math.floor(Math.random() * 50),
-                size_mb: Math.floor(Math.random() * 500),
-                channels: {
-                  whatsapp: Math.floor(Math.random() * 20),
-                  discord: Math.floor(Math.random() * 10),
-                  subagent: Math.floor(Math.random() * 5),
-                  other: Math.floor(Math.random() * 15)
-                },
-                whatsapp_contacts: ['+1234567890', '+0987654321', '+1122334455'],
-                discord_channels: ['general', 'support', 'voice-1']
-              },
-              cron_jobs: {
-                count: 3,
-                jobs: [
-                  { schedule: '0 * * * *', name: 'backup.sh', last_run_at: '10 mins ago', next_run_at: '50 mins' },
-                  { schedule: '*/5 * * * *', name: 'health-check.sh', last_run_at: '2 mins ago', next_run_at: '3 mins' },
-                  { schedule: '0 0 * * *', name: 'daily-report.sh', last_run_at: '24 hours ago', next_run_at: 'tomorrow' }
-                ]
-              },
-              gateway_log: {
-                size_mb: 5,
-                total_lines: 1000,
-                tail: [
-                  "[INFO] System started",
-                  "[INFO] Connected to database",
-                  providerStatus === 'offline' ? "[ERROR] Provider connection failed" : "[INFO] Provider connected",
-                  "[WARN] High memory usage detected"
-                ]
-              },
-              token_usage: {
-                total_tokens: tokenUsage,
-                total_input: Math.floor(tokenUsage * 0.7),
-                total_output: Math.floor(tokenUsage * 0.3),
-                per_model: [
-                  { model: 'gpt-4', input: Math.floor(tokenUsage * 0.4), output: Math.floor(tokenUsage * 0.1), total: Math.floor(tokenUsage * 0.5) },
-                  { model: 'claude-3-opus', input: Math.floor(tokenUsage * 0.2), output: Math.floor(tokenUsage * 0.1), total: Math.floor(tokenUsage * 0.3) },
-                  { model: 'llama-3-70b', input: Math.floor(tokenUsage * 0.1), output: Math.floor(tokenUsage * 0.1), total: Math.floor(tokenUsage * 0.2) }
-                ]
-              },
-              main_config: {
-                ".env": { "OPENAI_API_KEY": "sk-...", "DISCORD_TOKEN": "..." }
-              }
-            },
-            config: { ".env": { "OPENAI_API_KEY": "sk-...", "DISCORD_TOKEN": "..." } }
-          },
-          system: {
-            cpu: {
-              usage_pct: cpuLoad,
-              physical_cores: 8,
-              logical_cores: 16,
-              freq_mhz_current: 3200
-            },
-            memory: {
-              usage_pct: memoryLoad,
-              total_gb: 32,
-              free: 32 - (memoryLoad / 100 * 32),
-              used_gb: (memoryLoad / 100 * 32),
-              available_gb: 32 - (memoryLoad / 100 * 32),
-              swap_pct: 10,
-              swap_used_gb: 2
-            },
-            disk: {
-              usage_pct: 45 + Math.floor(Math.random() * 5),
-              total: 512,
-              free: 256,
-              used_gb: 256,
-              total_gb: 512,
-              io: {
-                read_mb: Math.floor(Math.random() * 100),
-                write_mb: Math.floor(Math.random() * 50)
-              },
-              partitions: [
-                { mountpoint: '/', device: '/dev/sda1', fstype: 'ext4', total_gb: 512, used_gb: 256, free_gb: 256, usage_pct: 50 },
-                { mountpoint: '/mnt/data', device: '/dev/sdb1', fstype: 'ext4', total_gb: 1024, used_gb: 100, free_gb: 924, usage_pct: 10 }
-              ]
-            },
-            load_avg: {
-              "1min": 1.5,
-              "5min": 1.2,
-              "15min": 1.0
-            },
-            uptime: {
-              uptime_hours: 48,
-              boot_time: '2024-03-01 10:00:00'
-            },
-            network: {
-              bytes_sent_mb: Math.floor(Math.random() * 1000),
-              bytes_recv_mb: Math.floor(Math.random() * 2000)
-            }
-          }
-        };
-        
-        // Update local state directly for immediate feedback
-        setData(mockData as unknown as TelemetryData);
-        setLoading(false);
-      }, 3000);
-    }
-    return () => clearInterval(interval);
-  }, [simulating, simulationScenario]);
 
   const handleSync = async () => {
     try {
@@ -303,7 +136,6 @@ export function Dashboard() {
     { id: 'operations', label: 'Operations', icon: LayoutDashboard },
     { id: 'diagnostics', label: 'Diagnostics', icon: Activity },
     { id: 'models', label: 'Models & Usage', icon: Brain },
-    { id: 'simulation', label: 'Simulation', icon: Play },
   ];
 
   return (
@@ -313,12 +145,8 @@ export function Dashboard() {
         status={data?.openclaw?.status === 'running' ? 'online' : 'offline'}
         systemId={data?.hostname || data?.device_id || "OC-2024-X1"}
         region={data?.id || data?.hostname || data?.device_id || 'OC-PROD'}
-        simulating={simulating}
-        onToggleSimulation={() => setSimulating(!simulating)}
         onSync={handleSync}
         onOpsMode={() => setOpsMode(true)}
-        simulationScenario={simulationScenario}
-        onScenarioChange={setSimulationScenario}
       />
       
       <MiniMetricStrip 
@@ -327,8 +155,8 @@ export function Dashboard() {
         disk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent || 0}
         totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
         activeSessions={data?.openclaw?.rich?.sessions?.count || 0}
-        warnings={simulationScenario === 'memory_leak' ? 5 : 0} // Mock from scenario
-        errors={simulationScenario === 'provider_outage' ? 15 : 0} // Mock from scenario
+        warnings={0}
+        errors={0}
       />
 
       {/* Tabs */}
@@ -442,15 +270,7 @@ export function Dashboard() {
           <div className="space-y-6">
             <LLMAnalytics usage={data?.openclaw?.rich?.token_usage} models={llms} />
           </div>
-        )}
-
-        {/* Simulation Tab (Placeholder for future expansion) */}
-        {activeTab === 'simulation' && (
-          <div className="flex flex-col items-center justify-center h-[50vh] border border-dashed border-[#2A2B30] rounded-lg bg-[#151619]/50">
-            <Play className="w-12 h-12 text-[#8E9299] mb-4" />
-            <h2 className="text-xl font-bold mb-2">Simulation Mode Active</h2>
-            <p className="text-[#8E9299] mb-6 text-center max-w-md">
-              Current Scenario: <span className="text-white font-mono uppercase">{simulationScenario.replace('_', ' ')}</span>
+        )}</span>
             </p>
             <p className="text-sm text-[#8E9299]">
               Use the controls in the Top Command Bar to change scenarios.
