@@ -1,6 +1,5 @@
 import React from 'react';
 import { Server, RefreshCw, Monitor } from 'lucide-react';
-import { clsx } from 'clsx';
 import { StatusIndicator } from './StatusIndicator';
 
 interface TopCommandBarProps {
@@ -11,17 +10,9 @@ interface TopCommandBarProps {
   onOpsMode: () => void;
 }
 
-export function TopCommandBar({
-  status,
-  systemId,
-  region,
-  onSync,
-  onOpsMode,
-  onScenarioChange
-}: TopCommandBarProps) {
+export function TopCommandBar({ status, systemId, region, onSync, onOpsMode }: TopCommandBarProps) {
   return (
     <div className="bg-[#09090B] border-b border-[#2A2B30] p-4 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-0 z-50 shadow-md">
-      {/* Left: Identity & Status */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <div className="bg-white text-black p-1.5 rounded">
@@ -32,28 +23,26 @@ export function TopCommandBar({
             <span className="text-[10px] font-mono text-[#8E9299] tracking-widest uppercase">Command Center</span>
           </div>
         </div>
-        
         <div className="h-8 w-px bg-[#2A2B30] mx-2 hidden md:block" />
-        
-        <StatusIndicator 
-          status={status} 
-          label={status.toUpperCase()} 
-          className="bg-[#151619] px-3 py-1 rounded border border-[#2A2B30] text-xs font-bold"
-        />
-        
+        <StatusIndicator status={status} label={status.toUpperCase()} className="bg-[#151619] px-3 py-1 rounded border border-[#2A2B30] text-xs font-bold" />
         <div className="hidden md:flex flex-col">
           <span className="text-[10px] text-[#8E9299] font-mono uppercase">System ID</span>
           <span className="text-xs text-white font-mono">{systemId}</span>
         </div>
-        
         <div className="hidden md:flex flex-col">
           <span className="text-[10px] text-[#8E9299] font-mono uppercase">Region</span>
           <span className="text-xs text-white font-mono">{region}</span>
         </div>
       </div>
-
-      {/* Right: Actions */}
       <div className="flex items-center gap-3">
-        </div>
+        <button onClick={onSync} className="p-2 text-[#8E9299] hover:text-white hover:bg-[#151619] rounded border border-transparent hover:border-[#2A2B30] transition-all" title="Sync Data">
+          <RefreshCw className="w-4 h-4" />
+        </button>
+        <button onClick={onOpsMode} className="flex items-center gap-2 px-3 py-2 bg-[#151619] hover:bg-[#1E1F23] border border-[#2A2B30] rounded text-xs font-mono uppercase tracking-wider transition-colors text-white">
+          <Monitor className="w-4 h-4" />
+          <span className="hidden sm:inline">Ops Mode</span>
+        </button>
+      </div>
+    </div>
   );
 }
