@@ -33,19 +33,54 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState<'operations' | 'diagnostics' | 'models' | 'simulation'>('operations');
 
   useEffect(() => {
-    const q = query(collection(db, 'openclaw_telemetry'), orderBy('createdAt', 'desc'), limit(20));
+    const q = query(collection(db, 'openclaw_telemetry'), orderBy('createdAt', 'desc'), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TelemetryData));
-      if (docs.length > 0) {
-        setData(docs[0]);
-        setHistory(docs.reverse().map(d => ({
+      const rawDocs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        // Use the 'id' field from data if present (e.g. 'OC-PROD-SERVER-01'), otherwise doc ID
+        return { ...data, id: data.id || doc.id };
+      });
+
+      // 1. Identify Agent Data (System Stats)
+      // The local script sends id: 'OC-PROD-SERVER-01'
+      const agentDocs = rawDocs.filter(d => d.id === 'OC-PROD-SERVER-01');
+      const latestAgentDoc = agentDocs[0];
+
+      // 2. Identify Real App Data (Business Stats)
+      // Any doc that is NOT the agent. We assume the real app writes here too.
+      const appDocs = rawDocs.filter(d => d.id !== 'OC-PROD-SERVER-01');
+      const latestAppDoc = appDocs[0];
+
+      // 3. Merge Data for Current View
+      // We prefer Agent for System Stats, and App for Business Stats
+      const mergedData: any = {
+        id: 'MERGED-VIEW',
+        createdAt: latestAgentDoc?.createdAt || latestAppDoc?.createdAt || new Date(),
+        system: latestAgentDoc?.system || latestAppDoc?.system || {},
+        openclaw: latestAppDoc?.openclaw || latestAgentDoc?.openclaw || {}
+      };
+
+      // If we have real app data, use it. If not, we might fall back to agent's fake data (if present)
+      // But we want to encourage using the real data.
+      
+      setData(mergedData as TelemetryData);
+
+      // 4. Build History (Focus on System Stats for smoothness)
+      // We use the Agent's history for CPU/RAM charts to prevent oscillation
+      if (agentDocs.length > 0) {
+        const historyData = agentDocs.slice(0, 20).reverse().map(d => ({
           timestamp: d.createdAt?.toDate ? format(d.createdAt.toDate(), 'HH:mm:ss') : format(new Date(d.createdAt), 'HH:mm:ss'),
           cpu: d.system?.cpu?.usage || 0,
           memory: d.system?.memory?.usage || 0,
           disk: d.system?.disk?.usage || 0,
-          tokens: d.openclaw?.rich?.token_usage?.total_tokens || 0
-        })));
+          // Try to grab tokens from the "closest" app doc in time? 
+          // For now, just use the value in this doc (which might be 0 if we cleaned the agent)
+          // or 0 to keep the chart clean of fake data.
+          tokens: 0 
+        }));
+        setHistory(historyData);
       }
+      
       setLoading(false);
     });
 

@@ -1,85 +1,154 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: llms
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, < 100 chars)
+    //   - provider: string (required, < 50 chars)
+    //   - createdAt: timestamp (immutable)
+    //   - userId: string (immutable, matches auth.uid)
+    //
+    // Collection: usage_logs
+    // Document ID: auto-generated
+    // Fields:
+    //   - llmId: string (required, < 50 chars)
+    //   - promptTokens: number (required, >= 0)
+    //   - completionTokens: number (required, >= 0)
+    //   - totalTokens: number (required, >= 0)
+    //   - timestamp: timestamp (immutable)
+    //   - userId: string (immutable, matches auth.uid)
+    //
+    // Collection: system_status
+    // Document ID: userId (matches auth.uid)
+    // Fields:
+    //   - primary: string (optional)
+    //   - fallbacks: list (optional)
+    //   - probes: list (optional)
+    //   - codex_quota: list (optional)
+    //   - codex_expires: string (optional)
+    //   - updated_at: string (optional)
+    //   - sessions: list (optional)
+    //   - channels: list (optional)
+    //   - userId: string (required, matches auth.uid)
+    //   - last_sync: timestamp (optional)
+    //
+    // Collection: users
+    // Document ID: userId (matches auth.uid)
+    // Fields:
+    //   - email: string (required)
+    //   - role: string (required, 'admin' or 'user')
+    //   - createdAt: timestamp (immutable)
+    //
+    // ===============================================================
+
     // Helper Functions
-    // ===============================================================
-
-    // Check if the user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Validate required fields exist
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "renato.mott@gmail.com" && request.auth.token.email_verified == true));
     }
 
-    // Validate that the document contains only the allowed fields
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
     function hasOnlyAllowedFields(fields) {
       return request.resource.data.keys().hasOnly(fields);
     }
 
-    // Validate string length
-    function validStringLength(field, minLen, maxLen) {
-      return request.resource.data[field] is string &&
-        request.resource.data[field].size() >= minLen &&
-        request.resource.data[field].size() <= maxLen;
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
     }
 
-    // Validate ISO 8601 date string format (YYYY-MM-DDTHH:MM:SS)
-    function isValidDateString(dateStr) {
-      return dateStr is string &&
-        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
     }
 
-    // ===============================================================
-    // Domain Validators
-    // ===============================================================
-
-    function isValidTelemetry(data) {
-      return hasRequiredFields(['createdAt', 'openclaw', 'system']) &&
-             // Validate createdAt
-             (data.createdAt is timestamp || (data.createdAt is string && isValidDateString(data.createdAt))) &&
-             
-             // Validate openclaw object structure
-             data.openclaw is map &&
-             data.openclaw.keys().hasAll(['status', 'directory', 'api']) &&
-             
-             // Validate system object structure
-             data.system is map &&
-             data.system.keys().hasAll(['cpu', 'memory', 'disk']);
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
     }
 
-    // ===============================================================
-    // Collection Rules
-    // ===============================================================
+    function isValidLLM(data) {
+      return hasOnlyAllowedFields(['name', 'provider', 'createdAt', 'userId']) &&
+             hasRequiredFields(['name', 'provider', 'createdAt', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.provider is string && data.provider.size() > 0 && data.provider.size() < 50 &&
+             data.createdAt is timestamp;
+    }
 
-    match /openclaw_telemetry/{telemetryId} {
-      // Allow read if authenticated
-      allow read: if isAuthenticated();
+    function isValidUsageLog(data) {
+      return hasOnlyAllowedFields(['llmId', 'promptTokens', 'completionTokens', 'totalTokens', 'timestamp', 'userId']) &&
+             hasRequiredFields(['llmId', 'promptTokens', 'completionTokens', 'totalTokens', 'timestamp', 'userId']) &&
+             data.llmId is string && data.llmId.size() > 0 && data.llmId.size() < 50 &&
+             data.promptTokens is number && data.promptTokens >= 0 &&
+             data.completionTokens is number && data.completionTokens >= 0 &&
+             data.totalTokens is number && data.totalTokens >= 0 &&
+             data.timestamp is timestamp;
+    }
 
-      // Allow create if authenticated and valid
-      allow create: if isAuthenticated() && isValidTelemetry(request.resource.data);
+    function isValidSystemStatus(data) {
+      return hasOnlyAllowedFields(['primary', 'fallbacks', 'probes', 'codex_quota', 'codex_expires', 'updated_at', 'sessions', 'channels', 'userId', 'last_sync']) &&
+             hasRequiredFields(['userId']) &&
+             (!('primary' in data) || data.primary == null || data.primary is string) &&
+             (!('fallbacks' in data) || data.fallbacks is list) &&
+             (!('probes' in data) || data.probes is list) &&
+             (!('codex_quota' in data) || data.codex_quota is list) &&
+             (!('codex_expires' in data) || data.codex_expires == null || data.codex_expires is string) &&
+             (!('updated_at' in data) || data.updated_at is string) &&
+             (!('sessions' in data) || data.sessions is list) &&
+             (!('channels' in data) || data.channels is list) &&
+             (!('last_sync' in data) || data.last_sync is timestamp);
+    }
 
-      // Allow update if authenticated and valid (though telemetry is usually immutable, allowing updates for correction/enrichment)
-      allow update: if isAuthenticated() && isValidTelemetry(request.resource.data);
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['email', 'role', 'createdAt']) &&
+             hasRequiredFields(['email', 'role', 'createdAt']) &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.role in ['admin', 'user'] &&
+             data.createdAt is timestamp;
+    }
 
-      // Allow delete if authenticated (e.g. cleanup)
-      allow delete: if isAuthenticated();
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && ((isOwner(userId) && request.resource.data.role == 'user') || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && ((isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin()) && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
     }
 
     match /llms/{llmId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated(); // Allow write for catalog updates
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isAuthenticated() && isValidLLM(request.resource.data) && uidUnchanged();
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidLLM(request.resource.data) && uidNotModified() && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId) || isAdmin();
     }
 
     match /usage_logs/{logId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated(); // Allow logging usage
-      allow update: if false; // Logs should be immutable
-      allow delete: if isAuthenticated(); // Allow cleanup
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isAuthenticated() && isValidUsageLog(request.resource.data) && uidUnchanged();
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidUsageLog(request.resource.data) && uidNotModified() && request.resource.data.timestamp == resource.data.timestamp;
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /system_status/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidSystemStatus(request.resource.data) && uidUnchanged();
+      allow update: if isOwner(userId) && isValidSystemStatus(request.resource.data) && uidNotModified();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Dashboard público (Netlify) lendo telemetria do OpenClaw
+    match /openclaw_telemetry/{docId} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }
