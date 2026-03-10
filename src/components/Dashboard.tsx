@@ -35,6 +35,7 @@ import { CronHealthPanel } from './CronHealthPanel';
 import { MultiTimeline } from './MultiTimeline';
 import { ModelInsightsTable } from './ModelInsightsTable';
 import { MemoryPressureWidget } from './MemoryPressureWidget';
+import { RemoteCommandPanel } from './RemoteCommandPanel';
 import { generateInsights, computeHealthScore } from '../lib/insightEngine';
 
 export function Dashboard() {
@@ -381,6 +382,9 @@ export function Dashboard() {
                 <SyncHealth
                   lastUpdated={data?.last_updated || data?.timestamp}
                   deviceId={data?.id || data?.device_id}
+                />
+                <RemoteCommandPanel
+                  deviceId={data?.id || data?.device_id || 'Mac-mini-de-Mott.local'}
                 />
               </div>
             </div>
