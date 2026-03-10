@@ -37,12 +37,13 @@ const COMMANDS = [
     confirm: 'Parar o gateway encerrará todas as sessões. Confirmar?',
   },
   {
-    id:    'sync_now',
-    label: 'Force Sync',
-    icon:  RefreshCw,
-    color: 'text-blue-400',
-    bg:    'bg-blue-500/10 border-blue-500/25 hover:bg-blue-500/20',
+    id:      'sync_now',
+    label:   'Force Sync',
+    icon:    RefreshCw,
+    color:   'text-blue-400',
+    bg:      'bg-blue-500/10 border-blue-500/25 hover:bg-blue-500/20',
     confirm: null,
+    cooldown: 15,
   },
 ];
 
@@ -61,6 +62,23 @@ function elapsed(from?: string, to?: string): string {
 
 export function RemoteCommandPanel({ deviceId, className }: RemoteCommandPanelProps) {
   const [sending, setSending] = useState<string | null>(null);
+  const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
+
+  // Cooldown countdown ticker
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCooldowns(prev => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach(k => {
+          if (next[k] > 0) { next[k]--; changed = true; }
+          else delete next[k];
+        });
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
   const [logs, setLogs] = useState<CommandLog[]>([]);
   const [confirm, setConfirm] = useState<typeof COMMANDS[0] | null>(null);
 
@@ -85,6 +103,9 @@ export function RemoteCommandPanel({ deviceId, className }: RemoteCommandPanelPr
         issued_at: new Date().toISOString(),
         issued_by: 'dashboard',
       });
+      if ((cmd as any).cooldown) {
+        setCooldowns(prev => ({ ...prev, [cmd.id]: (cmd as any).cooldown }));
+      }
     } catch (e) {
       console.error('Command failed:', e);
     } finally {
@@ -123,7 +144,7 @@ export function RemoteCommandPanel({ deviceId, className }: RemoteCommandPanelPr
                 : <Icon className={clsx('w-4 h-4', cmd.color)} />
               }
               <span className={clsx('text-[10px] font-mono font-bold leading-tight', cmd.color)}>
-                {cmd.label}
+                {cooldownLeft > 0 ? `${cooldownLeft}s` : cmd.label}
               </span>
             </button>
           );
