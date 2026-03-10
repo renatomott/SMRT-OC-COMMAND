@@ -9,8 +9,12 @@ coverage/
 
 # Firebase service account — NUNCA commitar
 scripts/serviceAccountKey.json
-*serviceAccountKey*.json
+*serviceAccountKeyscripts/serviceAccountKey.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
 scripts/serviceAccountKey.json
 *.json # ou só o específico
-*.json
+scripts/serviceAccountKey.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
 scripts/
