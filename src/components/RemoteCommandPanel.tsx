@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { db } from '../services/firebase';
-import { collection, addDoc, onSnapshot, query, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { RotateCcw, Square, RefreshCw, Terminal, CheckCircle, XCircle, Loader, Clock, AlertTriangle } from 'lucide-react';
 
 interface RemoteCommandPanelProps {
@@ -84,13 +84,17 @@ export function RemoteCommandPanel({ deviceId, className }: RemoteCommandPanelPr
 
   // Listen to recent commands for this device
   useEffect(() => {
-    if (!deviceId) return;
+    if (!deviceId || deviceId.trim() === '') return;
+    try {
     const ref = collection(db, 'commands', deviceId, 'pending');
     const q = query(ref, orderBy('issued_at', 'desc'), limit(8));
     const unsub = onSnapshot(q, snap => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as CommandLog)));
     });
     return () => unsub();
+    } catch (e) {
+      console.error('RemoteCommandPanel listener error:', e);
+    }
   }, [deviceId]);
 
   const issueCommand = async (cmd: typeof COMMANDS[0]) => {

@@ -370,7 +370,9 @@ export function Dashboard() {
         })()}
 
         {/* Diagnostics Tab */}
-        {activeTab === 'diagnostics' && (
+        {activeTab === 'diagnostics' && (() => {
+          try {
+            return (
           <div className="space-y-5">
             {/* Row 1: Log + Sessions side by side */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -401,7 +403,12 @@ export function Dashboard() {
               </div>
             </div>
           </div>
-        )}
+            );
+          } catch(e) {
+            console.error('Diagnostics tab error:', e);
+            return <div className="p-8 text-red-400 font-mono text-sm">Erro ao renderizar Diagnostics: {String(e)}</div>;
+          }
+        })()}
 
         {/* Models Tab */}
         {activeTab === 'models' && (
