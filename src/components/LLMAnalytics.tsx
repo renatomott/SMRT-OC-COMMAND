@@ -11,7 +11,7 @@ interface LLMAnalyticsProps {
   className?: string;
 }
 
-export function LLMAnalytics({ usage, models, className }: LLMAnalyticsProps) {
+export function LLMAnalytics({ usage, models, className, catalogUnavailable }: LLMAnalyticsProps) {
   if (!usage && (!models || models.length === 0)) {
     return (
       <div className={twMerge("bg-[#151619] border border-[#2A2B30] rounded-lg p-8 text-center", className)}>
@@ -179,7 +179,7 @@ export function LLMAnalytics({ usage, models, className }: LLMAnalyticsProps) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-[#8E9299] italic">No models found in catalog</td>
+                  <td colSpan={5} className="py-4 text-center text-[#8E9299] italic">{catalogUnavailable ? "⚠️ Usando modelos Ollama locais (catálogo Firebase vazio)" : "Nenhum modelo encontrado"}</td>
                 </tr>
               )}
             </tbody>
