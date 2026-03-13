@@ -238,8 +238,8 @@ export function Dashboard() {
         const cpuAvg = cpuVals.length ? cpuVals.reduce((a: number, b: number) => a + b, 0) / cpuVals.length : undefined;
         const memAvg = memVals.length ? memVals.reduce((a: number, b: number) => a + b, 0) / memVals.length : undefined;
         // Cron errors e log errors para o topo
-        const _cronJobsRaw = data?.openclaw?.rich?.cron_jobs || data?.openclaw?.rich?.integrations || [];
-        const _cronArr = (Array.isArray(_cronJobsRaw) ? _cronJobsRaw : Object.values(_cronJobsRaw)) as any[];
+        const _cronJobsRaw = data?.openclaw?.rich?.cron_jobs;
+        const _cronArr = (Array.isArray(_cronJobsRaw?.jobs) ? _cronJobsRaw.jobs : Array.isArray(_cronJobsRaw) ? _cronJobsRaw : []) as any[];
         const cronErrors = _cronArr.filter((j: any) => j?.status === 'error' || (j?.consecutive_errors ?? 0) > 0).length;
         const logErrors = data?.openclaw?.rich?.gateway_log?.error_count || 0;
 
