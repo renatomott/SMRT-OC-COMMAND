@@ -120,7 +120,7 @@ export function HeroMetrics({ data, history }: HeroMetricsProps) {
       <HeroCard
         label="Disco"
         value={`${data.disk.toFixed(1)}%`}
-        sub="SSD interno"
+        sub="/Data (SSD interno)"
         color={data.disk > 90 ? '#ef4444' : data.disk > 75 ? '#f59e0b' : '#10b981'}
         bgColor="bg-emerald-500"
         borderColor="border-[#1E2030]"
