@@ -420,7 +420,17 @@ export function Dashboard() {
             {/* LLMAnalytics charts below */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div className="lg:col-span-2">
-                <LLMAnalytics usage={data?.openclaw?.rich?.token_usage} models={llms} />
+                <LLMAnalytics
+                usage={data?.openclaw?.rich?.token_usage}
+                models={llms.length > 0 ? llms : (data?.openclaw?.rich?.ollama_models || []).map((m: any) => ({
+                  id: m.name, name: m.name,
+                  provider: m.is_remote ? 'remote' : 'ollama',
+                  state: 'available',
+                  context_window: m.params || null,
+                  max_tokens: null,
+                }))}
+                catalogUnavailable={llms.length === 0}
+              />
               </div>
               <div className="space-y-5">
                 <ModelEfficiencyTable
