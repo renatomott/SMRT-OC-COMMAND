@@ -249,8 +249,8 @@ export function Dashboard() {
             disk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent || 0}
             totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
             activeSessions={data?.openclaw?.rich?.sessions?.count || 0}
-            warnings={cronErrors}
-            errors={logErrors}
+            warnings={0}
+            errors={0}
             cpuAvg={cpuAvg}
             memAvg={memAvg}
             activeProviders={activeProviders}
