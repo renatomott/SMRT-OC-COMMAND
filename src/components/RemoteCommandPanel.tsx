@@ -132,6 +132,7 @@ export function RemoteCommandPanel({ deviceId, className }: RemoteCommandPanelPr
           const isLoading = sending === cmd.id;
           const lastRun = logs.find(l => l.command === cmd.id);
           const isPending = lastRun?.status === 'pending' || lastRun?.status === 'running';
+          const cooldownLeft = cooldowns[cmd.id] || 0;
           return (
             <button
               key={cmd.id}
