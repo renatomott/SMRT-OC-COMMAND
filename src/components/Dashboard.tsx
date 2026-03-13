@@ -241,7 +241,7 @@ export function Dashboard() {
         const providers = data?.openclaw?.rich?.providers || {};
         const providerEntries = Object.values(providers) as any[];
         const totalProviders = providerEntries.length;
-        const activeProviders = providerEntries.filter((p: any) => p?.enabled || p?.active || p?.status === 'active').length;
+        const activeProviders = providerEntries.filter((p: any) => p?.enabled !== false && p?.status !== 'disabled' && p?.status !== 'inactive').length;
         return (
           <MiniMetricStrip
             cpu={data?.system?.cpu?.usage_pct || data?.system?.cpu?.usage_percent || 0}
@@ -249,8 +249,8 @@ export function Dashboard() {
             disk={data?.system?.disk?.usage_pct || data?.system?.disk?.usage_percent || 0}
             totalTokens={data?.openclaw?.rich?.token_usage?.total_tokens || 0}
             activeSessions={data?.openclaw?.rich?.sessions?.count || 0}
-            warnings={0}
-            errors={0}
+            warnings={cronErrors}
+            errors={logErrors}
             cpuAvg={cpuAvg}
             memAvg={memAvg}
             activeProviders={activeProviders}

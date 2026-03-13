@@ -80,13 +80,13 @@ export function MiniMetricStrip({
       />
       <MetricItem
         icon={<AlertTriangle className="w-4 h-4" />}
-        label="WARN"
+        label="CRON ERR"
         value={warnings.toString()}
         status={warnings > 0 ? 'warning' : 'normal'}
       />
       <MetricItem
         icon={<AlertCircle className="w-4 h-4" />}
-        label="ERRORS"
+        label="LOG ERR"
         value={errors.toString()}
         status={errors > 0 ? 'critical' : 'normal'}
       />
